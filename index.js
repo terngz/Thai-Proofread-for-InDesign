@@ -636,6 +636,16 @@ function renderSoon() {
   if (!renderTimer) renderTimer = setTimeout(renderFindings, 250);
 }
 
+function resetCheck() {
+  if (running) return setStatus('กำลังตรวจอยู่ กด "หยุด" ก่อน แล้วค่อยล้าง', RED);
+  findings = [];
+  renderFindings();
+  progressEnd();
+  Tele.reset();
+  renderStats();
+  setStatus("สถานะ: พร้อมใช้งาน");
+}
+
 function updateIgnoreLabel() {
   if ($("btnClearIgnore")) $("btnClearIgnore").textContent = `ล้างรายการคำที่ละเว้น (${ignoreSet.size})`;
 }
@@ -752,6 +762,10 @@ async function runCheck() {
   if (useService) {
     const svcUrl = $("serviceUrl") ? $("serviceUrl").value.trim() : "";
     if (!svcUrl) return setStatus("กรุณากรอก URL บริการตรวจสะกด PyThaiNLP", RED);
+    setStatus("กำลังเชื่อมต่อบริการ PyThaiNLP...");
+    try { await serviceHealth(svcUrl); } catch (e) {
+      return setStatus("ยังไม่ได้รันบริการ PyThaiNLP: เปิด spellcheck_server.py ก่อน (กด ? ในส่วนเครื่องมือตรวจหลักเพื่อดูวิธี) แล้วลองใหม่", RED);
+    }
   }
 
   findings = [];
@@ -790,6 +804,10 @@ async function runCheck() {
           applyItems(items, sc[i].units, "svc", ctx);
         } catch (e) {
           console.warn("Service check error", e);
+          if (e && (e.network || e.timeout)) {
+            progressEnd();
+            return setStatus("บริการ PyThaiNLP หยุดตอบระหว่างตรวจ: ตรวจว่า spellcheck_server.py ยังรันอยู่หรือไม่", RED);
+          }
         }
         if (live) live.done++;
         renderSoon();
@@ -994,23 +1012,28 @@ function initPresets() {
   }
 }
 
-function togglePanel(showId, hideId) {
-  const box = $(showId);
-  if (!box) return;
-  const open = box.style.display !== "block";
-  box.style.display = open ? "block" : "none";
-  if (open && $(hideId)) $(hideId).style.display = "none";
+const PANELS = [["helpBox", "btnHelp"], ["aboutBox", "btnAbout"]];
+function showPanel(openId) {
+  PANELS.forEach(([box]) => { if ($(box)) $(box).style.display = box === openId ? "block" : "none"; });
 }
-if ($("btnHelp")) $("btnHelp").addEventListener("click", () => togglePanel("helpBox", "aboutBox"));
-if ($("btnAbout")) $("btnAbout").addEventListener("click", () => togglePanel("aboutBox", "helpBox"));
+function togglePanel(id) {
+  showPanel($(id) && $(id).style.display === "block" ? null : id);
+}
+if ($("btnHelp")) $("btnHelp").addEventListener("click", () => togglePanel("helpBox"));
+if ($("btnAbout")) $("btnAbout").addEventListener("click", () => togglePanel("aboutBox"));
+// คลิกที่อื่นนอกกล่อง/ปุ่ม = ปิด
+document.addEventListener("click", (e) => {
+  const inside = PANELS.some(([box, btn]) => [$(box), $(btn)].some((n) => n && n.contains(e.target)));
+  if (!inside) showPanel(null);
+});
 
 if ($("btnOpenGithub")) {
   $("btnOpenGithub").addEventListener("click", () => {
-    shell.openExternal("https://github.com/PyThaiNLP/pythainlp");
+    shell.openExternal("https://github.com/terngz/indesign-thaiproofread");
   });
 }
 
-function init() {
+function init() { 
   initAccordions();
   ignoreSet = new Set(lsGet(K_IGNORE, []));
 
@@ -1030,6 +1053,7 @@ function init() {
   }
 
   if ($("btnCheck")) $("btnCheck").addEventListener("click", runCheck);
+  if ($("btnResetAll")) $("btnResetAll").addEventListener("click", resetCheck);
   if ($("btnCancel")) $("btnCancel").addEventListener("click", () => { cancelled = true; setStatus("กำลังหยุด..."); });
 }
 

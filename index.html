@@ -656,8 +656,14 @@
     }
 
     .footer {
+      display: flex;
+      flex-direction: row;
+      justify-content: center;
       margin: 16px 0 4px 0;
-      text-align: center;
+    }
+
+    .footer .link {
+      margin: 0 8px;
     }
   </style>
 </head>
@@ -947,6 +953,7 @@
     </div>
 
     <div class="footer">
+      <span id="btnResetAll" class="link">ล้างการตรวจทั้งหมด</span>
       <span id="btnClearIgnore" class="link">ล้างรายการคำที่ละเว้น (0)</span>
     </div>
 
