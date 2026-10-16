@@ -8,7 +8,6 @@ const K_ENGINE_MODE = "ai_proofread_engine_mode";
 let connDeleteArmed = false;
 let modelMeta = {};
 
-// 🟢 อ่านเลขเวอร์ชันจากไฟล์ manifest.json โดยตรงเป็น Single Source of Truth
 async function getPluginVersion() {
   try {
     const { localFileSystem } = require("uxp").storage;
@@ -16,9 +15,7 @@ async function getPluginVersion() {
     const manifestFile = await pluginFolder.getEntry("manifest.json");
     const content = await manifestFile.read();
     const json = JSON.parse(content);
-    if (json && json.version) {
-      return json.version;
-    }
+    if (json && json.version) return json.version;
   } catch (e) {
     console.warn("Error reading manifest.json version:", e);
   }
@@ -47,20 +44,37 @@ function num(id, def, min, max) {
   return Math.min(max, Math.max(min, v));
 }
 
-/* ---------- สลับโหมด PyThaiNLP / AI Engine ---------- */
+/* ---------- สลับโหมด PyThaiNLP / AI Engine และจัดไฮไลต์ Card ---------- */
+function getSelectedEngineMode() {
+  if ($("modePyThaiNLP") && $("modePyThaiNLP").checked) return "pythainlp";
+  return "ai";
+}
+
+const ENGINE_DESC = {
+  pythainlp: "ตรวจสะกดและตัดคำด้วย PyThaiNLP ในเครื่อง ออฟไลน์ เร็ว (ต้องรัน spellcheck_server.py)",
+  ai: "ตรวจตามบริบทได้แม่นกว่า เลือกใช้ Local AI หรือ Cloud API"
+};
+
 function syncEngineModeUI() {
-  const isPy = $("modePyThaiNLP").checked;
+  const mode = getSelectedEngineMode();
+  if ($("engineDesc")) $("engineDesc").textContent = ENGINE_DESC[mode];
   const pyBox = $("pythainlpConfigBox");
   const aiBox = $("aiConfigBox");
   const candRow = $("chkCandPyRow");
-  
-  if (pyBox) pyBox.style.display = isPy ? "block" : "none";
-  if (aiBox) aiBox.style.display = isPy ? "none" : "block";
-  if (candRow) candRow.style.display = isPy ? "flex" : "none";
-  
-  lsSet(K_ENGINE_MODE, isPy ? "pythainlp" : "ai");
-}
 
+  const boxPy = $("boxPyThaiNLP");
+  const boxAI = $("boxAI");
+
+  if (boxPy) boxPy.classList.toggle("active", mode === "pythainlp");
+  if (boxAI) boxAI.classList.toggle("active", mode === "ai");
+
+  if (pyBox) pyBox.style.display = mode === "pythainlp" ? "block" : "none";
+  
+  if (aiBox) aiBox.style.display = mode === "ai" ? "block" : "none";
+  if (candRow) candRow.style.display = mode === "pythainlp" ? "flex" : "none";
+
+  lsSet(K_ENGINE_MODE, mode);
+}
 function loadEngineModePref() {
   const savedMode = lsGet(K_ENGINE_MODE, "pythainlp");
   if (savedMode === "ai" && $("modeAI")) {
@@ -71,7 +85,6 @@ function loadEngineModePref() {
   syncEngineModeUI();
 }
 
-/* ---------- ฟอร์ม <-> โปรไฟล์ ---------- */
 function updateConnHints(presetId) {
   const pr = PROVIDER_PRESETS[presetId] || PROVIDER_PRESETS.custom;
   if ($("connLmNativeRow")) $("connLmNativeRow").style.display = presetId === "lmstudio" ? "flex" : "none";
@@ -123,7 +136,7 @@ function readForm(p) {
   p.retries = num("connRetries", 2, 0, 5);
   p.parallel = Math.round(num("connParallel", 1, 1, 8));
   p.chunkLimit = Math.round(num("connChunk", 800, 300, 12000));
-  p.jsonMode = "structured"; // ล็อคค่าอัตโนมัติ ไม่ต้องมี UI เลือก
+  p.jsonMode = "structured";
   p.maxTokens = Math.round(num("connMaxTokens", 1500, 100, 64000));
   p.think = $("connThink").value;
   p.thinkBudget = Math.round(num("connThinkBudget", 0, 0, 64000));
@@ -325,28 +338,81 @@ function renderLog() {
   if ($("logBox")) $("logBox").value = Tele.log.join("\n");
 }
 
+/* ---------- handler ที่เดิมขาด: เลือกโมเดล / เปลี่ยนผู้ให้บริการ / เพิ่ม-ลบโปรไฟล์ / ลบ key ---------- */
+function applyModelChoice() {
+  const sel = $("modelSelect");
+  if (!sel || !sel.value) return;
+  const p = activeProfile();
+  p.model = sel.value;
+  if ($("connModel")) $("connModel").value = p.model;
+  saveProfiles();
+  updateModelInfo();
+}
+
+function onPresetChange() {
+  const id = $("connPreset").value;
+  const pr = PROVIDER_PRESETS[id] || PROVIDER_PRESETS.custom;
+  const name = $("connName").value.trim();
+  const isDefaultName = !name || name === NEW_PROFILE_NAME ||
+    Object.keys(PROVIDER_PRESETS).some((k) => PROVIDER_PRESETS[k].label === name);
+  if (isDefaultName) $("connName").value = pr.label;
+  $("connUrl").value = pr.baseUrl;
+  $("connTimeout").value = pr.timeoutSec;
+  $("connParallel").value = pr.parallel;
+  $("connChunk").value = pr.chunkLimit;
+  updateConnHints(id);
+}
+
+const NEW_PROFILE_NAME = "โปรไฟล์ใหม่";
+
+async function newProfile() {
+  const p = makeProfile("custom", NEW_PROFILE_NAME);
+  ProfileStore.list.push(p);
+  ProfileStore.active = p.id;
+  saveProfiles();
+  renderProfileSelect();
+  await switchProfile(p.id);
+  showConnResult("เลือกผู้ให้บริการ แล้วกดบันทึก", "");
+}
+
+async function deleteProfile() {
+  const btn = $("btnConnDelete");
+  if (ProfileStore.list.length <= 1) return showConnResult("ต้องมีอย่างน้อย 1 โปรไฟล์", "err");
+  if (!connDeleteArmed) {
+    connDeleteArmed = true;
+    btn.textContent = "ยืนยันลบ?";
+    setTimeout(() => { connDeleteArmed = false; btn.textContent = "ลบโปรไฟล์"; }, 3000);
+    return;
+  }
+  connDeleteArmed = false;
+  btn.textContent = "ลบโปรไฟล์";
+  const p = activeProfile();
+  await KeyStore.remove(p.id);
+  delete keyCache[p.id];
+  delete capsByProfile[p.id];
+  ProfileStore.list = ProfileStore.list.filter((x) => x.id !== p.id);
+  ProfileStore.active = ProfileStore.list[0].id;
+  saveProfiles();
+  renderProfileSelect();
+  await switchProfile(ProfileStore.active);
+}
+
+async function clearKey() {
+  const p = activeProfile();
+  await KeyStore.remove(p.id);
+  delete keyCache[p.id];
+  updateKeyNote(p);
+  showConnResult("ลบ API key แล้ว", "ok");
+  await refreshModels();
+}
+
 async function initSettings() {
   Tele.onChange = renderLog;
   loadProfiles();
 
-  // 🟢 แสดงเลขเวอร์ชันโดยอ่านสดจาก manifest.json ตอนเริ่มต้น
   if ($("aboutVersion")) {
     getPluginVersion().then((v) => {
       $("aboutVersion").textContent = v;
-    });
-  }
-
-  // 🟢 ผูก Event Listener ปุ่ม #btnAbout ให้กดเปิด/ปิดกล่องเกี่ยวกับ + ซิงค์เลขเวอร์ชัน
-  if ($("btnAbout")) {
-    $("btnAbout").addEventListener("click", async () => {
-      const box = $("aboutBox");
-      if (box) {
-        const open = box.style.display !== "block";
-        box.style.display = open ? "block" : "none";
-        if (open && $("aboutVersion")) {
-          $("aboutVersion").textContent = await getPluginVersion();
-        }
-      }
     });
   }
 
@@ -364,9 +430,19 @@ async function initSettings() {
   loadEngineModePref();
   renderLog();
 
-  // Event Listeners สลับโหมด
-  if ($("modePyThaiNLP")) $("modePyThaiNLP").addEventListener("change", syncEngineModeUI);
-  if ($("modeAI")) $("modeAI").addEventListener("change", syncEngineModeUI);
+  // Event Listeners สลับโหมดการตรวจ
+  if ($("boxPyThaiNLP")) {
+    $("boxPyThaiNLP").addEventListener("click", () => {
+      if ($("modePyThaiNLP")) $("modePyThaiNLP").checked = true;
+      syncEngineModeUI();
+    });
+  }
+  if ($("boxAI")) {
+    $("boxAI").addEventListener("click", () => {
+      if ($("modeAI")) $("modeAI").checked = true;
+      syncEngineModeUI();
+    });
+  }
 
   if ($("btnConnSettings")) {
     $("btnConnSettings").addEventListener("click", () => {
@@ -378,6 +454,11 @@ async function initSettings() {
   }
 
   if ($("profileSelect")) $("profileSelect").addEventListener("change", () => switchProfile($("profileSelect").value));
+  if ($("modelSelect")) $("modelSelect").addEventListener("change", applyModelChoice);
+  if ($("connPreset")) $("connPreset").addEventListener("change", onPresetChange);
+  if ($("btnConnNew")) $("btnConnNew").addEventListener("click", newProfile);
+  if ($("btnConnDelete")) $("btnConnDelete").addEventListener("click", deleteProfile);
+  if ($("btnConnClearKey")) $("btnConnClearKey").addEventListener("click", clearKey);
   if ($("btnConnSave")) $("btnConnSave").addEventListener("click", saveConn);
   if ($("btnConnTest")) $("btnConnTest").addEventListener("click", testConn);
   if ($("btnSelfTest")) $("btnSelfTest").addEventListener("click", selfTest);

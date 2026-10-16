@@ -1,0 +1,60 @@
+{
+  "manifestVersion": 5,
+  "id": "a0699c84",
+  "name": "Thai AI Proofreader TH/EN",
+  "version": "1.1.4",
+  "main": "index.html",
+  "host": {
+    "app": "ID",
+    "minVersion": "18.5.0"
+  },
+  "requiredPermissions": {
+    "network": {
+      "domains": "all"
+    }
+  },
+  "entrypoints": [
+    {
+      "id": "mainPanel",
+      "type": "panel",
+      "label": {
+        "default": "Thai AI Proofreader Panel"
+      },
+      "minimumSize": {
+        "width": 230,
+        "height": 200
+      },
+      "maximumSize": {
+        "width": 2000,
+        "height": 2000
+      },
+      "preferredDockedSize": {
+        "width": 300,
+        "height": 320
+      },
+      "preferredFloatingSize": {
+        "width": 500,
+        "height": 360
+      },
+      "icons": [
+        {
+          "path": "icons/plugin.png",
+          "width": 23,
+          "height": 23,
+          "scale": [1, 2],
+          "theme": ["darkest", "dark", "medium", "lightest", "light", "all"]
+        }
+      ]
+    }
+  ],
+  "icons": [
+    {
+      "path": "icons/plugin.png",
+      "width": 48,
+      "height": 48,
+      "species": ["pluginList"],
+      "scale": [1, 2],
+      "theme": ["darkest", "dark", "medium", "lightest", "light", "all"]
+    }
+  ]
+}

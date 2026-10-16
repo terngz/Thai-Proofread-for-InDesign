@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <style>
+    /* =========================================================
+     *  Design tokens  (Dark = default, Light = ตามธีม InDesign)
+     *  ระยะห่างใช้สเกล 4 / 8 / 12 / 16 px ทั้งหมด
+     * ========================================================= */
+    html {
+      --bg: #262626;
+      --surface: #2E2E2E;
+      --surface-hi: #383838;
+      --bd: #454545;
+      --fg: #EDEDED;
+      --fg2: #A6A6A6;
+      --accent: #5AA2FF;
+      --accent-bg: #2E7BEA;
+      --accent-soft: rgba(90, 162, 255, 0.16);
+      --err: #FF7A70;
+      --ok: #5DDC8F;
+      --input-bg: #1F1F1F;
+      --input-fg: #FFFFFF;
+    }
+
+    @media (prefers-color-scheme: light) {
+      html {
+        --bg: #F4F4F5;
+        --surface: #FFFFFF;
+        --surface-hi: #EDEDF0;
+        --bd: #DCDCE0;
+        --fg: #1F1F22;
+        --fg2: #6B6B73;
+        --accent: #1769E0;
+        --accent-bg: #1769E0;
+        --accent-soft: rgba(23, 105, 224, 0.10);
+        --err: #C62828;
+        --ok: #1B8A47;
+        --input-bg: #FFFFFF;
+        --input-fg: #1F1F22;
+      }
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg);
+      color: var(--fg);
+      font-size: 13px;
+    }
+
+    #app {
+      box-sizing: border-box;
+      height: 100%;
+      padding: 16px 12px;
+      overflow-y: auto;
+      background-color: var(--bg);
+      color: var(--fg);
+    }
+
+    /* ===== Header ===== */
+    .title-row {
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    h3 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--fg);
+    }
+
+    .sub {
+      margin: 2px 0 16px 0;
+      font-size: 11px;
+      color: var(--fg2);
+    }
+
+    .header-btns {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+    }
+
+    .icon-btn {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      margin-left: 6px;
+      border: 1px solid var(--bd);
+      border-radius: 11px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--fg2);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .icon-btn:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .icon-btn.sm {
+      width: 18px;
+      height: 18px;
+      border-radius: 9px;
+      font-size: 10px;
+      margin-left: 0;
+    }
+
+    /* ===== Panels (About / Help / sub-panels) ===== */
+    .subpanel {
+      margin: 0 0 12px 0;
+      padding: 12px;
+      border: 1px solid var(--bd);
+      border-radius: 8px;
+      background-color: var(--surface);
+      font-size: 11px;
+      line-height: 1.55;
+      color: var(--fg2);
+    }
+
+    .subpanel>div {
+      margin-bottom: 4px;
+    }
+
+    .subpanel>div:last-child {
+      margin-bottom: 0;
+    }
+
+    .help-title {
+      margin-bottom: 8px !important;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--fg);
+    }
+
+    .help-scroll {
+      max-height: 240px;
+      overflow-y: auto;
+    }
+
+    .help-foot {
+      margin-top: 8px;
+      text-align: right;
+    }
+
+    .code {
+      margin: 4px 0 8px 0;
+      padding: 6px 8px;
+      border-radius: 4px;
+      background-color: var(--bg);
+      color: var(--ok);
+      font-family: monospace;
+      font-size: 11px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    /* ===== Accordion ===== */
+    .acc {
+      margin: 0 0 8px 0;
+      border: 1px solid var(--bd);
+      border-radius: 8px;
+      background-color: var(--surface);
+    }
+
+    .acc-head {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--fg);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .acc-ind {
+      font-weight: 400;
+      font-size: 14px;
+      color: var(--fg2);
+    }
+
+    .acc-body {
+      padding: 12px;
+      border-top: 1px solid var(--bd);
+    }
+
+    /* accordion ซ้อนใน AI box ใช้พื้นหลังต่างจากกล่องแม่ */
+    .config-box .acc {
+      background-color: var(--bg);
+    }
+
+    .config-box {
+      margin-top: 12px;
+    }
+
+    /* ===== Segmented control (เลือกเครื่องมือตรวจ) ===== */
+    .seg-group {
+      display: flex;
+      flex-direction: row;
+      padding: 3px;
+      border: 1px solid var(--bd);
+      border-radius: 8px;
+      background-color: var(--bg);
+    }
+
+    .seg {
+      flex: 1;
+      padding: 6px 8px;
+      border-radius: 6px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--fg2);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .seg:hover {
+      color: var(--fg);
+    }
+
+    .seg.active {
+      background-color: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .seg input[type="radio"] {
+      display: none;
+    }
+
+    .hint {
+      margin: 8px 0 0 0;
+      font-size: 11px;
+      line-height: 1.5;
+      color: var(--fg2);
+    }
+
+    /* ===== Form ===== */
+    .field {
+      margin: 0 0 12px 0;
+    }
+
+    .field:last-child {
+      margin-bottom: 0;
+    }
+
+    .lbl {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      margin: 0 0 4px 0;
+      font-size: 11px;
+      color: var(--fg2);
+    }
+
+    .row {
+      display: flex;
+      flex-direction: row;
+    }
+
+    .row>div {
+      margin-right: 8px;
+    }
+
+    .row>div:last-child {
+      margin-right: 0;
+    }
+
+    select,
+    input[type="text"],
+    input[type="number"],
+    input[type="password"],
+    textarea {
+      width: 100%;
+      margin: 0;
+      padding: 4px 8px;
+      box-sizing: border-box;
+      color: var(--input-fg) !important;
+      background-color: var(--input-bg) !important;
+      border: 1px solid var(--bd) !important;
+      border-radius: 6px;
+    }
+
+    select option {
+      background-color: var(--input-bg);
+      color: var(--input-fg);
+    }
+
+    textarea {
+      height: 110px;
+      line-height: 1.5;
+    }
+
+    #logBox {
+      height: 130px;
+      font-size: 11px;
+    }
+
+    .chk {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      margin: 0 0 8px 0;
+      font-size: 12px;
+      color: var(--fg) !important;
+      cursor: pointer;
+    }
+
+    .chk:last-child {
+      margin-bottom: 0;
+    }
+
+    .chk span {
+      margin-left: 6px;
+      line-height: 1.4;
+      color: var(--fg) !important;
+    }
+
+    .lang-row {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+    }
+
+    .lang-row .lang-lbl {
+      margin-right: 16px;
+      font-size: 11px;
+      color: var(--fg2);
+    }
+
+    .lang-row .chk {
+      margin: 0 16px 0 0;
+    }
+
+    .inline-row {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+    }
+
+    .inline-row input[type="text"] {
+      flex: 1;
+      height: 28px;
+      margin-right: 8px;
+    }
+
+    .preset-row {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      margin-top: 8px;
+    }
+
+    .preset-row input[type="text"] {
+      flex: 1;
+      height: 28px;
+      margin-right: 8px;
+    }
+
+    /* ===== Buttons ===== */
+    .btn,
+    button {
+      height: 28px;
+      margin: 0;
+      padding: 0 12px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      font-size: 12px;
+      color: var(--fg) !important;
+      background-color: var(--surface-hi) !important;
+      border: 1px solid var(--bd) !important;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      border-color: var(--accent) !important;
+    }
+
+    button.btn-accent {
+      color: #FFFFFF !important;
+      background-color: var(--accent-bg) !important;
+      border-color: var(--accent-bg) !important;
+      font-weight: 700;
+    }
+
+    button.btn-text {
+      height: 24px;
+      padding: 0 8px;
+      font-size: 11px;
+      color: var(--fg2) !important;
+      background-color: transparent !important;
+      border-color: transparent !important;
+    }
+
+    button.btn-text:hover {
+      color: var(--accent) !important;
+      border-color: transparent !important;
+    }
+
+    button.btn-danger {
+      color: var(--err) !important;
+    }
+
+    .btn-line {
+      display: flex;
+      flex-direction: row;
+      margin: 8px 0 0 0;
+    }
+
+    .btn-line button {
+      flex: 1;
+      margin-right: 8px;
+      padding: 0 4px;
+      font-size: 11px;
+    }
+
+    .btn-line button:last-child {
+      margin-right: 0;
+    }
+
+    .preset-row button,
+    .inline-row button {
+      flex: none;
+      margin-right: 8px;
+    }
+
+    .preset-row button:last-child,
+    .inline-row button:last-child {
+      margin-right: 0;
+    }
+
+    .link {
+      color: var(--accent);
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    sp-button {
+      width: 100%;
+      margin: 8px 0;
+      align-items: center;
+      text-align: center;
+    }
+
+    #btnCancel {
+      display: none;
+    }
+
+    /* ===== Status / Progress ===== */
+    #status {
+      margin: 0 0 8px 0;
+      padding: 8px 12px;
+      border: 1px solid var(--bd);
+      border-left: 3px solid var(--bd);
+      border-radius: 6px;
+      background-color: var(--surface);
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--fg);
+    }
+
+    #status.err {
+      color: var(--err);
+      border-left-color: var(--err);
+    }
+
+    #status.ok {
+      color: var(--ok);
+      border-left-color: var(--ok);
+    }
+
+    #progressWrap {
+      margin: 0 0 8px 0;
+    }
+
+    #progressTrack {
+      height: 4px;
+      border-radius: 2px;
+      background-color: var(--surface-hi);
+    }
+
+    #progressFill {
+      height: 100%;
+      width: 0%;
+      border-radius: 2px;
+      background-color: var(--accent);
+    }
+
+    #progressText,
+    #statsLine {
+      margin: 4px 0 0 0;
+      font-size: 11px;
+      color: var(--fg2);
+    }
+
+    #statsLine {
+      margin-bottom: 8px;
+    }
+
+    #connResult,
+    #serviceResult,
+    #modelInfo {
+      margin-top: 8px;
+      font-size: 11px;
+      line-height: 1.5;
+      color: var(--fg2);
+    }
+
+    #modelInfo {
+      margin-top: 4px;
+    }
+
+    #connResult.ok,
+    #serviceResult.ok {
+      color: var(--ok);
+    }
+
+    #connResult.err,
+    #serviceResult.err {
+      color: var(--err);
+    }
+
+    .issue {
+      margin-top: 4px;
+      font-size: 11px;
+      line-height: 1.5;
+      color: var(--fg2);
+    }
+
+    .dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      margin-left: 8px;
+      border-radius: 4px;
+      background-color: #8E8E93;
+    }
+
+    .dot.ok {
+      background-color: var(--ok);
+    }
+
+    .dot.bad {
+      background-color: var(--err);
+    }
+
+    /* ===== Result cards ===== */
+    .card {
+      margin: 0 0 8px 0;
+      padding: 12px;
+      border: 1px solid var(--bd);
+      border-radius: 8px;
+      background-color: var(--surface);
+      color: var(--fg);
+    }
+
+    .card-top {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .card-page {
+      font-size: 11px;
+      color: var(--fg2);
+    }
+
+    .card-word {
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.5;
+      word-break: break-all;
+    }
+
+    .w-err {
+      color: var(--err);
+    }
+
+    .w-arrow {
+      margin: 0 8px;
+      font-weight: 400;
+      color: var(--fg2);
+    }
+
+    .w-ok {
+      color: var(--ok);
+    }
+
+    .card-actions {
+      display: flex;
+      flex-direction: row;
+      margin-top: 12px;
+    }
+
+    .card-actions button {
+      flex: 1;
+      margin-right: 8px;
+    }
+
+    .card-actions button:last-child {
+      margin-right: 0;
+    }
+
+    .card-more {
+      display: flex;
+      flex-direction: row;
+      justify-content: flex-end;
+      margin-top: 4px;
+    }
+
+    .tag {
+      padding: 1px 8px;
+      border-radius: 8px;
+      font-size: 10px;
+      font-weight: 700;
+      color: #000000;
+    }
+
+    .tag-rule {
+      background-color: #FFB340;
+    }
+
+    .tag-ai {
+      background-color: #64D2FF;
+    }
+
+    .tag-cand {
+      background-color: #C7C7CC;
+    }
+
+    .tag-svc {
+      background-color: #7EDDB0;
+    }
+
+    .footer {
+      margin: 16px 0 4px 0;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+
+    <!-- ===== Header ===== -->
+    <div class="title-row">
+      <h3>THAI AI Proofreader</h3>
+      <div class="header-btns">
+        <span id="btnHelp" class="icon-btn">?</span>
+        <span id="btnAbout" class="icon-btn">i</span>
+      </div>
+    </div>
+    <p class="sub">พิสูจน์อักษร ไทย / อังกฤษ</p>
+
+    <div id="aboutBox" class="subpanel" style="display: none;">
+      <div class="help-title">THAI AI Proofreader</div>
+      <div>เวอร์ชัน <span id="aboutVersion"></span></div>
+      <div>ปลั๊กอินพิสูจน์อักษรภาษาไทยและอังกฤษสำหรับ Adobe InDesign ด้วย PyThaiNLP และ AI Engine</div>
+      <div>©2026 Konnext Group Company Limited. All rights reserved.</div>
+    </div>
+
+    <div id="helpBox" class="subpanel" style="display: none;">
+      <div class="help-title">คู่มือการใช้งาน</div>
+      <div class="help-scroll">
+        <div><b>1. เลือกเครื่องมือตรวจหลัก</b></div>
+        <div>PyThaiNLP: ตรวจสะกดออฟไลน์ เร็ว (ต้องรัน spellcheck_server.py)</div>
+        <div>AI Engine: ตรวจลึกตามบริบท (LM Studio / Ollama / Cloud API)</div>
+        <div><b>2. เริ่มตรวจ</b></div>
+        <div>เลือกขอบเขตข้อความ แล้วกด "ตรวจคำผิด"</div>
+        <div><b>3. จัดการผลการตรวจ</b></div>
+        <div>กด "ไปที่จุดนี้" เพื่อเลือกคำใน InDesign หรือ "แก้เลย" เพื่อแก้ทันที</div>
+      </div>
+      <div class="help-foot">
+        <span id="btnOpenGithub" class="link">เปิดคู่มือฉบับเต็มบน GitHub ↗</span>
+      </div>
+    </div>
+
+    <!-- ===== เครื่องมือตรวจหลัก ===== -->
+    <div class="acc" id="accEngine" data-open="1">
+      <div class="acc-head"><span>เครื่องมือตรวจหลัก</span><span class="acc-ind">−</span></div>
+      <div class="acc-body">
+
+        <div class="seg-group">
+          <label class="seg" id="boxPyThaiNLP">
+            <input type="radio" name="engineMode" id="modePyThaiNLP" value="pythainlp" checked>
+            <span>PyThaiNLP</span>
+          </label>
+          <label class="seg" id="boxAI">
+            <input type="radio" name="engineMode" id="modeAI" value="ai">
+            <span>AI Engine</span>
+          </label>
+        </div>
+        <div id="engineDesc" class="hint"></div>
+
+        <!-- โหมด PyThaiNLP -->
+        <div id="pythainlpConfigBox" class="config-box">
+          <div class="field">
+            <div class="lbl">
+              <span>URL บริการตรวจสะกด</span>
+              <span id="btnServiceHelp" class="icon-btn sm">?</span>
+            </div>
+            <div id="serviceHelp" class="subpanel" style="display: none;">
+              <div class="help-title">วิธีติดตั้งและรันบริการตรวจสะกด</div>
+              <div>1. ติดตั้ง Python 3.9 ขึ้นไป (ดาวน์โหลดจาก python.org)</div>
+              <div>2. เปิด PowerShell (Windows) หรือ Terminal (Mac) แล้วติดตั้งแพ็กเกจ ครั้งเดียวพอ:</div>
+              <div class="code">pip install pythainlp pyspellchecker</div>
+              <div>3. รันบริการ ใส่พาธเต็มของไฟล์ในโฟลเดอร์ tools (ลากไฟล์มาวางในหน้าต่างได้):</div>
+              <div class="code">python "C:\path\to\tools\spellcheck_server.py"</div>
+              <div>4. เห็นข้อความ "spellcheck service on http://127.0.0.1:8765" แสดงว่าพร้อม
+                ต้องเปิดหน้าต่างนั้นค้างไว้ระหว่างใช้งาน</div>
+              <div>5. กลับมากด "ทดสอบ"</div>
+              <div class="issue">ถ้าเปลี่ยนพอร์ต: python spellcheck_server.py --port 9000 แล้วแก้ URL ให้ตรงกัน
+                รายละเอียดเพิ่มเติมดูใน README.md</div>
+            </div>
+            <div class="inline-row">
+              <input type="text" id="serviceUrl" value="http://127.0.0.1:8765">
+              <button id="btnServiceTest">ทดสอบ</button>
+            </div>
+            <div id="serviceResult"></div>
+          </div>
+        </div>
+
+        <!-- โหมด AI Engine -->
+        <div id="aiConfigBox" class="config-box" style="display: none;">
+
+          <div class="acc" id="accModel" data-open="1">
+            <div class="acc-head">
+              <span><span id="accModelTitle">โมเดล AI</span><span id="healthDot" class="dot"></span></span>
+              <span class="acc-ind">−</span>
+            </div>
+            <div class="acc-body">
+              <div class="field row">
+                <div style="flex: 1;">
+                  <div class="lbl"><span>โปรไฟล์</span><span id="btnConnSettings" class="link">ตั้งค่า</span></div>
+                  <select id="profileSelect"></select>
+                </div>
+                <div style="flex: 1;">
+                  <div class="lbl"><span>โมเดล</span><span id="btnRefreshModels" class="link">รีเฟรช</span></div>
+                  <select id="modelSelect">
+                    <option value="">กำลังเชื่อมต่อ...</option>
+                  </select>
+                </div>
+              </div>
+              <div id="modelInfo"></div>
+
+              <div id="connPanel" class="subpanel" style="display: none; margin: 12px 0 0 0;">
+                <div class="field">
+                  <div class="lbl"><span>ผู้ให้บริการ</span></div>
+                  <select id="connPreset"></select>
+                </div>
+                <div class="field">
+                  <div class="lbl"><span>ชื่อโปรไฟล์</span></div>
+                  <input type="text" id="connName">
+                </div>
+                <div class="field">
+                  <div class="lbl"><span>BASE URL</span></div>
+                  <input type="text" id="connUrl">
+                </div>
+                <div class="field">
+                  <div class="lbl"><span id="connKeyLabel">API KEY</span><span id="btnConnClearKey"
+                      class="link">ลบ key</span></div>
+                  <input type="password" id="connKey" placeholder="วาง API key ที่นี่">
+                  <div id="connKeyNote" class="issue"></div>
+                </div>
+                <div class="field">
+                  <div class="lbl"><span>ชื่อโมเดล (พิมพ์เอง ถ้าไม่อยู่ในรายการ)</span></div>
+                  <input type="text" id="connModel">
+                </div>
+                <div class="field row">
+                  <div style="flex: 1;">
+                    <div class="lbl"><span>MAX TOKENS</span></div>
+                    <input type="number" id="connMaxTokens" min="100" max="64000" step="100">
+                  </div>
+                  <div style="flex: 1;">
+                    <div class="lbl"><span>TEMP</span></div>
+                    <input type="number" id="connTemp" min="0" max="2" step="0.1">
+                  </div>
+                </div>
+                <div class="field row">
+                  <div style="flex: 2;">
+                    <div class="lbl"><span>THINKING / REASONING</span></div>
+                    <select id="connThink">
+                      <option value="auto">ค่าเริ่มต้นของโมเดล</option>
+                      <option value="off">ปิด</option>
+                      <option value="low">ต่ำ</option>
+                      <option value="medium">กลาง</option>
+                      <option value="high">สูง</option>
+                    </select>
+                  </div>
+                  <div style="flex: 1;" id="connThinkBudgetBox">
+                    <div class="lbl"><span>BUDGET</span></div>
+                    <input type="number" id="connThinkBudget" min="0" max="64000" step="500">
+                  </div>
+                </div>
+                <div id="connThinkNote" class="issue" style="margin: -4px 0 12px 0;"></div>
+                <div class="field row">
+                  <div style="flex: 1;">
+                    <div class="lbl"><span>TIMEOUT (วิ)</span></div>
+                    <input type="number" id="connTimeout" min="10" max="900" step="10">
+                  </div>
+                  <div style="flex: 1;">
+                    <div class="lbl"><span>RETRY</span></div>
+                    <input type="number" id="connRetries" min="0" max="5" step="1">
+                  </div>
+                  <div style="flex: 1;">
+                    <div class="lbl"><span>พร้อมกัน</span></div>
+                    <input type="number" id="connParallel" min="1" max="8" step="1">
+                  </div>
+                </div>
+                <div class="field">
+                  <div class="lbl"><span>CHUNK (ตัวอักษรต่อ request)</span></div>
+                  <input type="number" id="connChunk" min="300" max="12000" step="100">
+                </div>
+                <label class="chk" id="connLmNativeRow" style="display: none;">
+                  <input type="checkbox" id="connLmNative">
+                  <span>ใช้ endpoint /api/v0 ของ LM Studio เพื่อดู tok/s จริงและ TTFT</span>
+                </label>
+                <div id="connCloudRow" style="display: none;">
+                  <label class="chk">
+                    <input type="checkbox" id="connCloudAck">
+                    <span>รับทราบว่าข้อความในเอกสารจะถูกส่งออกจากเครื่องไปยังผู้ให้บริการนี้</span>
+                  </label>
+                </div>
+                <div class="btn-line">
+                  <button id="btnConnSave" class="btn-accent">บันทึก</button>
+                  <button id="btnConnTest">ทดสอบการเชื่อมต่อ</button>
+                  <button id="btnSelfTest">ทดสอบโมเดล</button>
+                </div>
+                <div class="btn-line">
+                  <button id="btnConnNew">เพิ่มโปรไฟล์ใหม่</button>
+                  <button id="btnConnDelete" class="btn-danger">ลบโปรไฟล์</button>
+                </div>
+                <div id="connResult"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="acc" id="accPrompt" data-open="0">
+            <div class="acc-head"><span>คำสั่ง AI (System Instruction)</span><span class="acc-ind">+</span></div>
+            <div class="acc-body">
+              <div class="field">
+                <div class="lbl"><span>PRESET</span><span id="btnResetPrompt" class="link">คืนค่าเริ่มต้น</span></div>
+                <select id="presetSelect"></select>
+                <div class="preset-row">
+                  <input type="text" id="presetName" placeholder="ชื่อ Preset ใหม่...">
+                  <button id="btnSavePreset">บันทึก</button>
+                  <button id="btnDeletePreset">ลบ</button>
+                </div>
+              </div>
+              <div class="field">
+                <div class="lbl"><span>SYSTEM INSTRUCTION</span></div>
+                <textarea id="systemPrompt"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ===== กฎการตรวจ ===== -->
+    <div class="acc" id="accRules" data-open="1">
+      <div class="acc-head"><span>ตัวเลือกกฎการตรวจ</span><span class="acc-ind">−</span></div>
+      <div class="acc-body">
+        <label class="chk">
+          <input type="checkbox" id="chkRules" checked>
+          <span>ตรวจด้วยกฎอัตโนมัติ (สระซ้อน, อักขระแปลก, พิมพ์ซ้ำ)</span>
+        </label>
+        <label class="chk">
+          <input type="checkbox" id="chkSpacing" checked>
+          <span>ตรวจเว้นวรรคไม้ยมก (ๆ) และเว้นวรรคซ้อน</span>
+        </label>
+        <label class="chk" id="chkCandPyRow">
+          <input type="checkbox" id="chkCandPy">
+          <span>ตรวจจับคำน่าสงสัยด้วยพจนานุกรมในเครื่อง (คำที่ไม่มีในคลัง)</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- ===== ขอบเขต และภาษา ===== -->
+    <div class="acc" id="accScope" data-open="1">
+      <div class="acc-head"><span>ขอบเขต และภาษา</span><span class="acc-ind">−</span></div>
+      <div class="acc-body">
+        <div class="field">
+          <div class="lbl"><span>ขอบเขตการตรวจ</span></div>
+          <select id="scopeSelect">
+            <option value="selection" selected>ตามที่เลือก (กรอบ / ข้อความ / ตาราง)</option>
+            <option value="page">ทั้งหน้าปัจจุบัน</option>
+            <option value="document">ทั้งเอกสาร</option>
+          </select>
+        </div>
+        <div class="field lang-row">
+          <span class="lang-lbl">ภาษาที่ตรวจ</span>
+          <label class="chk"><input type="checkbox" id="chkTH" checked><span>ไทย</span></label>
+          <label class="chk"><input type="checkbox" id="chkEN" checked><span>อังกฤษ</span></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== ปุ่มตรวจ / สถานะ / ผลลัพธ์ ===== -->
+    <div id="actionBtnWrap">
+      <sp-button id="btnCheck" variant="cta">ตรวจคำผิด</sp-button>
+      <sp-button id="btnCancel" variant="secondary" style="display: none;">หยุด</sp-button>
+    </div>
+
+    <div id="progressWrap" style="display: none;">
+      <div id="progressTrack">
+        <div id="progressFill"></div>
+      </div>
+      <div id="progressText"></div>
+    </div>
+
+    <div id="status">สถานะ: พร้อมใช้งาน</div>
+    <div id="statsLine"></div>
+    <div id="resultList"></div>
+
+    <!-- ===== บันทึกการทำงาน (ย้ายลงล่าง เพราะใช้น้อย) ===== -->
+    <div class="acc" id="accLog" data-open="0">
+      <div class="acc-head"><span>บันทึกการทำงาน (token / ความเร็ว)</span><span class="acc-ind">+</span></div>
+      <div class="acc-body">
+        <textarea id="logBox" readonly></textarea>
+        <div class="btn-line"><button id="btnClearLog">ล้างบันทึก</button></div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span id="btnClearIgnore" class="link">ล้างรายการคำที่ละเว้น (0)</span>
+    </div>
+
+  </div>
+
+  <script src="words_th.js"></script>
+  <script src="words_en.js"></script>
+  <script src="providers.js"></script>
+  <script src="settings.js"></script>
+  <script src="index.js"></script>
+</body>
+
+</html>

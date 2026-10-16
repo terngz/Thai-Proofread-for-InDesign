@@ -1,8 +1,9 @@
 "use strict";
 const { app, NothingEnum, ScriptLanguage, UndoModes } = require("indesign");
+const { shell } = require("uxp");
 
 /* ============================================================
- *  CONFIG
+ *  CONFIG & CONSTANTS
  * ============================================================ */
 let chunkLimit = 800;
 const MAX_ORIGINAL_LEN = 30;
@@ -10,19 +11,43 @@ const K_PRESETS = "ai_proofread_custom_presets";
 const K_IGNORE = "ai_proofread_ignore";
 const THAI = /[\u0E01-\u0E7F]/;
 const LATIN_WORD = /^[A-Za-z][A-Za-z'\u2019]*$/;
-
-function wantText(t) { return (langs.th && THAI.test(t)) || (langs.en && /[A-Za-z]{3}/.test(t)); }
 const MARK_L = "【";
 const MARK_R = "】";
-const CAND_CONTEXT = 30;
 const RED = "err";
 const GREEN = "ok";
-const K_ACC = "ai_proofread_accordion";
 
 const BUILTIN_PRESETS = {
   strict_proofread: {
     name: "Proofreader ไทย + อังกฤษ",
     prompt: `คุณคือ "นักพิสูจน์อักษร" (Proofreader) ที่เชี่ยวชาญทั้งภาษาไทยและภาษาอังกฤษ ไม่ใช่บรรณาธิการ โดยมีหน้าที่ในการตรวจแต่ละภาษาทั้งไทยและอังกฤษ ตามเงื่อนไขของภาษานั้น ๆ เช่น ภาษาไทยใช้หลักของราชบัณฑิตยสถาน ส่วนภาษาอังกฤษใช้หลักของ Cambridge หรือ Oxford ก็ได้ โดยอิงจากบริบทในข้อความ หน้าที่คือ ตรวจหาคำผิด ชี้เฉพาะจุดที่มีคำที่สะกดผิด สะกดเกิน เจออักขระผิดตำแหน่ง เจอสระหรือวรรณยุกต์ซ็อน เป็นต้น ทำหน้าที่ ตรวจพิสูจน์อักษร ไม่ใช่หน้าที่ของบรรณาธิการ ห้ามปรับสำนวน ห้ามเรียบเรียงใหม่`
+  }
+};
+
+const RESPONSE_SCHEMA = {
+  type: "json_schema",
+  json_schema: {
+    name: "proofread_result",
+    strict: true,
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        errors: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              original: { type: "string" },
+              suggestion: { type: "string" },
+              issue: { type: "string" }
+            },
+            required: ["original", "suggestion", "issue"]
+          }
+        }
+      },
+      required: ["errors"]
+    }
   }
 };
 
@@ -35,7 +60,6 @@ let ignoreSet = new Set();
 let findings = [];
 let running = false;
 let cancelled = false;
-let pendingConfirm = null;
 let live = null;
 let deleteArmedKey = null;
 let langs = { th: true, en: true };
@@ -76,6 +100,7 @@ function visible(s) {
   if (!t.trim()) t = "[เว้นวรรค " + s.length + " ตัว]";
   return t;
 }
+function wantText(t) { return (langs.th && THAI.test(t)) || (langs.en && /[A-Za-z]{3}/.test(t)); }
 
 /* ============================================================
  *  RULE-BASED CHECKS
@@ -204,8 +229,8 @@ function parseModelJson(raw) {
     .trim();
   const tryParse = (str) => {
     const fixed = str.replace(/,\s*([\]}])/g, "$1");
-    try { return JSON.parse(fixed); } catch (e) {}
-    try { return JSON.parse(fixed.replace(/[\u0000-\u001F]+/g, " ")); } catch (e) {}
+    try { return JSON.parse(fixed); } catch (e) { }
+    try { return JSON.parse(fixed.replace(/[\u0000-\u001F]+/g, " ")); } catch (e) { }
     return undefined;
   };
   const pick = (v) => (Array.isArray(v) ? v : v && Array.isArray(v.errors) ? v.errors : undefined);
@@ -253,7 +278,7 @@ function enDictAvailable() {
 function getDict() {
   if (dict) return dict;
   dict = new Set();
-  if (dictAvailable()) THAI_WORDS_TEXT.split("\n").forEach((w) => { if (w) dict.add(w); });
+  if (dictAvailable()) THAI_WORDS_TEXT.split("\n").forEach((w) => { if (w) dict.add(w.trim()); });
   ignoreSet.forEach((w) => dict.add(w));
   return dict;
 }
@@ -261,7 +286,7 @@ function getDict() {
 function getEnDict() {
   if (enDict) return enDict;
   enDict = new Set();
-  if (enDictAvailable()) EN_WORDS_TEXT.split("\n").forEach((w) => { if (w) enDict.add(w); });
+  if (enDictAvailable()) EN_WORDS_TEXT.split("\n").forEach((w) => { if (w) enDict.add(w.trim()); });
   ignoreSet.forEach((w) => enDict.add(String(w).toLowerCase()));
   return enDict;
 }
@@ -319,7 +344,7 @@ function findCandidates(text) {
 }
 
 /* ============================================================
- *  INDESIGN DOM MANIPULATION
+ *  INDESIGN DOM MANIPULATION & UI HELPERS
  * ============================================================ */
 function collectUnits(scope) {
   const doc = app.activeDocument;
@@ -329,12 +354,12 @@ function collectUnits(scope) {
   const addText = (story, keyPrefix) => {
     if (!story) return;
     let id;
-    try { id = story.id; } catch (e) {}
+    try { id = story.id; } catch (e) { }
     if (id !== undefined) { const k = keyPrefix + id; if (seen.has(k)) return; seen.add(k); }
     const paras = story.paragraphs;
     const n = paras.length;
     let texts = null;
-    try { const t = paras.everyItem().contents; if (Array.isArray(t) && t.length === n) texts = t; } catch (e) {}
+    try { const t = paras.everyItem().contents; if (Array.isArray(t) && t.length === n) texts = t; } catch (e) { }
     for (let i = 0; i < n; i++) {
       const p = paras.item(i);
       units.push({ obj: p, text: texts ? texts[i] : getContents(p) });
@@ -343,7 +368,7 @@ function collectUnits(scope) {
 
   if (scope === "page") {
     let page = null;
-    try { page = app.activeWindow.activePage; } catch (e) {}
+    try { page = app.activeWindow.activePage; } catch (e) { }
     if (!page) throw new Error("ไม่พบหน้าปัจจุบัน (ต้องอยู่ในมุมมอง Layout)");
     const items = page.allPageItems;
     for (let i = 0; i < items.length; i++) {
@@ -392,7 +417,7 @@ function findFirst(obj, str) {
     const found = obj.findText();
     return found && found.length ? found[0] : null;
   } finally {
-    try { app.findTextPreferences = NothingEnum.nothing; } catch (e) {}
+    try { app.findTextPreferences = NothingEnum.nothing; } catch (e) { }
   }
 }
 
@@ -405,11 +430,11 @@ function locate(pos) {
   try {
     const r = unit.obj.characters.itemByRange(pos.start, pos.start + pos.len - 1);
     if (getContents(r) === expected) return { range: r };
-  } catch (e) {}
+  } catch (e) { }
   try {
     const r = findFirst(unit.obj, expected);
     if (r) return { range: r };
-  } catch (e) {}
+  } catch (e) { }
   return { err: "หาตำแหน่งในเอกสารไม่เจอ" };
 }
 
@@ -425,12 +450,12 @@ function goTo(f, btn) {
     try {
       const tfs = res.range.parentTextFrames;
       if (tfs.length) pageObj = tfs[0].parentPage;
-    } catch (e) {}
+    } catch (e) { }
     if (pageObj) {
       try {
         const win = app.activeWindow;
         if (win.activePage.documentOffset !== pageObj.documentOffset) win.activePage = pageObj;
-      } catch (e) {}
+      } catch (e) { }
     }
     app.select(res.range);
     if (!pageObj) setStatus("ข้อความนี้อยู่ในส่วนที่ล้นกรอบ (overset)", RED);
@@ -462,7 +487,7 @@ function resolvePage(pos) {
       const r = u.obj.characters.itemByRange(pos.start, pos.start + pos.len - 1);
       pos.page = pageOfFrame(r.parentTextFrames[0]);
     }
-  } catch (e) {}
+  } catch (e) { }
   return pos.page;
 }
 
@@ -485,57 +510,50 @@ function makeFinding(kind, original, suggestion, issue, positions) {
   };
 }
 
+function makeBtn(label, cls, onClick) {
+  const b = el("button", cls, label);
+  b.addEventListener("click", onClick);
+  return b;
+}
+
+const TAG_LABEL = { rule: "กฎ", cand: "สงสัย", svc: "สะกด", ai: "AI" };
+
 function buildCard(f) {
   const card = el("div", "card");
-  const head = el("div");
-  head.appendChild(el("span", "tag-" + f.kind, f.kind === "rule" ? "กฎ" : f.kind === "cand" ? "สงสัย" : f.kind === "svc" ? "สะกด" : "AI"));
-  head.appendChild(el("span", "err-tag", " "));
-  head.appendChild(el("b", "", visible(f.original)));
-  card.appendChild(head);
-  card.appendChild(el("div", "issue", "" + pageLabel(f)));
 
+  const top = el("div", "card-top");
+  top.appendChild(el("span", "tag tag-" + f.kind, TAG_LABEL[f.kind] || "AI"));
+  top.appendChild(el("span", "card-page", pageLabel(f)));
+  card.appendChild(top);
+
+  const word = el("div", "card-word");
+  word.appendChild(el("span", "w-err", visible(f.original)));
   if (f.suggestion) {
-    const sug = el("div");
-    sug.appendChild(el("span", "sug-tag", "แก้เป็น: "));
-    sug.appendChild(el("b", "", visible(f.suggestion)));
-    card.appendChild(sug);
+    word.appendChild(el("span", "w-arrow", "→"));
+    word.appendChild(el("span", "w-ok", visible(f.suggestion)));
   }
-  
-  // 🟢 แสดงสาเหตุเฉพาะกรณีที่มีรายละเอียดอื่นเพิ่มเติมนอกจาก "สะกดผิด" ทั่วไป
-  if (f.issue && f.issue !== "สะกดผิด") {
-    card.appendChild(el("div", "issue", "สาเหตุ: " + f.issue));
-  }
+  card.appendChild(word);
 
-  const row = el("div", "btn-row");
-  const goBtn = el("button", "", "ไปที่จุดนี้" + (f.positions.length > 1 ? ` (${f.positions.length})` : ""));
-  goBtn.addEventListener("click", () => goTo(f, goBtn));
-  row.appendChild(goBtn);
-  if (f.suggestion) {
-    const fixBtn = el("button", "", "แก้เลย");
-    fixBtn.addEventListener("click", () => applyFix(f, false));
-    row.appendChild(fixBtn);
-  }
-  card.appendChild(row);
+  if (f.issue && f.issue !== "สะกดผิด") card.appendChild(el("div", "issue", f.issue));
 
-  const row2 = el("div", "btn-row2");
-  if (f.suggestion && f.positions.length > 1) {
-    const allBtn = el("button", "", `แก้ทั้งหมด (${f.positions.length})`);
-    allBtn.addEventListener("click", () => applyFix(f, true));
-    row2.appendChild(allBtn);
-  }
-  const doneBtn = el("button", "", "แก้แล้ว");
-  doneBtn.addEventListener("click", () => { f.hidden = true; renderFindings(); });
-  const ignBtn = el("button", "", "ละเว้น");
-  ignBtn.addEventListener("click", () => {
+  const n = f.positions.length;
+  const main = el("div", "card-actions");
+  const goBtn = makeBtn("ไปที่จุดนี้" + (n > 1 ? ` (${n})` : ""), "", () => goTo(f, goBtn));
+  main.appendChild(goBtn);
+  if (f.suggestion) main.appendChild(makeBtn("แก้เลย", "btn-accent", () => applyFix(f, false)));
+  card.appendChild(main);
+
+  const more = el("div", "card-more");
+  if (f.suggestion && n > 1) more.appendChild(makeBtn(`แก้ทั้งหมด (${n})`, "btn-text", () => applyFix(f, true)));
+  more.appendChild(makeBtn("แก้แล้ว", "btn-text", () => { f.hidden = true; renderFindings(); }));
+  more.appendChild(makeBtn("ละเว้น", "btn-text", () => {
     ignoreSet.add(f.original);
     lsSet(K_IGNORE, Array.from(ignoreSet));
     f.hidden = true;
     updateIgnoreLabel();
     renderFindings();
-  });
-  row2.appendChild(doneBtn);
-  row2.appendChild(ignBtn);
-  card.appendChild(row2);
+  }));
+  card.appendChild(more);
   return card;
 }
 
@@ -600,26 +618,28 @@ function applyFix(f, all) {
   setStatus(`แก้ "${original}" เป็น "${suggestion}" แล้ว ${done} จุด`, GREEN);
 }
 
+let renderTimer = null;
 function renderFindings() {
+  if (renderTimer) { clearTimeout(renderTimer); renderTimer = null; }
   const list = $("resultList");
   if (!list) return;
+  const frag = document.createDocumentFragment();
+  findings
+    .filter((f) => !f.hidden)
+    .sort((a, b) => a.pageOffset - b.pageOffset || a.key - b.key)
+    .forEach((f) => frag.appendChild(buildCard(f)));
   list.innerHTML = "";
-  findings.filter((f) => !f.hidden).sort((a, b) => a.pageOffset - b.pageOffset || a.key - b.key).forEach((f) => list.appendChild(buildCard(f)));
+  list.appendChild(frag);
+}
+// เรียกถี่ ๆ ระหว่างตรวจ: รวมเป็นการวาดใหม่ครั้งเดียวทุก 250 ms
+function renderSoon() {
+  if (!renderTimer) renderTimer = setTimeout(renderFindings, 250);
 }
 
 function updateIgnoreLabel() {
   if ($("btnClearIgnore")) $("btnClearIgnore").textContent = `ล้างรายการคำที่ละเว้น (${ignoreSet.size})`;
 }
 
-function setDisabled(elm, on) {
-  if (!elm) return;
-  elm.disabled = on;
-  if (on) elm.setAttribute("disabled", ""); else elm.removeAttribute("disabled");
-  if (elm.classList) { if (on) elm.classList.add("is-disabled"); else elm.classList.remove("is-disabled"); }
-  elm.style.pointerEvents = on ? "none" : "";
-}
-
-// 🟢 สลับการแสดงผลปุ่มตรวจคำผิด/หยุด อยู่ตำแหน่งเดิม 100%
 function toggleRunning(on) {
   running = on;
   if ($("btnCheck")) $("btnCheck").style.display = on ? "none" : "block";
@@ -667,7 +687,6 @@ function applyItems(items, chunkUnits, kind, ctx) {
     const suggestion = typeof it.suggestion === "string" ? strip(it.suggestion) : "";
     if (!original || original === suggestion || original.length > MAX_ORIGINAL_LEN || ignoreSet.has(original)) continue;
 
-    // 🟢 กรองข้อความ issue จาก AI เพื่อป้องกันการมโนระบุสระ/อักขระผิดพลาด
     let rawIssue = String(it.issue || "").trim();
     if (kind === "ai") {
       if (!rawIssue || rawIssue.length > 12 || /สระ|อักขระ|พยัญชนะ|เกิน|ขาด|หาย|หลุด/.test(rawIssue)) {
@@ -701,16 +720,16 @@ function applyItems(items, chunkUnits, kind, ctx) {
 }
 
 /* ============================================================
- *  MAIN CHECK RUNNER
+ *  MAIN RUN CHECK
  * ============================================================ */
 async function runCheck() {
   if (running) return;
   if (app.documents.length === 0) return setStatus("กรุณาเปิดเอกสาร InDesign ก่อน", RED);
 
-  const isPyMode = $("modePyThaiNLP") ? $("modePyThaiNLP").checked : true;
+  const engineMode = typeof getSelectedEngineMode === "function" ? getSelectedEngineMode() : "pythainlp";
   const useRules = $("chkRules") ? $("chkRules").checked : true;
-  const useService = isPyMode;
-  const useAI = !isPyMode;
+  const useService = engineMode === "pythainlp";
+  const useAI = engineMode === "ai";
 
   const spacing = $("chkSpacing") ? $("chkSpacing").checked : false;
   const scope = $("scopeSelect") ? $("scopeSelect").value : "selection";
@@ -743,7 +762,7 @@ async function runCheck() {
   toggleRunning(true);
 
   try {
-    // Step 1: กฎการตรวจพื้นฐาน (สระซ้อน, ไม้ยมก, พิมพ์ซ้ำ)
+    // 1. ตรวจด้วยกฎพื้นฐาน
     if (useRules) {
       for (const u of units) {
         for (const r of runRules(u.text, { spacing, th: langs.th, en: langs.en })) {
@@ -757,7 +776,7 @@ async function runCheck() {
     const ctx = { taken: new Set(), merged: new Map(), stat: { rule: findings.length, ai: 0, svc: 0, dropped: 0 } };
     findings.forEach((f) => f.positions.forEach((p) => ctx.taken.add(p.unit.idx + ":" + p.start)));
 
-    // Step 2: รัน PyThaiNLP Engine + Local Candidates Check (เฉพาะโหมด PyThaiNLP)
+    // 2. โหมด PyThaiNLP (Python Offline Service)
     if (useService && !cancelled) {
       const svcUrl = $("serviceUrl") ? $("serviceUrl").value.trim() : "";
       const sc = buildChunks(units);
@@ -773,9 +792,10 @@ async function runCheck() {
           console.warn("Service check error", e);
         }
         if (live) live.done++;
-        renderFindings();
+        renderSoon();
       }
       progressEnd();
+      renderFindings();
 
       const useCand = $("chkCandPy") ? $("chkCandPy").checked : false;
       if (useCand && segmenter && (dictAvailable() || enDictAvailable())) {
@@ -786,15 +806,19 @@ async function runCheck() {
           en: "ไม่พบในพจนานุกรมอังกฤษ"
         };
 
+        const occupied = new Set();
+        findings.forEach((f) => f.positions.forEach((p) => occupied.add(p.unit.idx + ":" + p.start)));
+
         for (const u of units) {
           try {
             const cands = findCandidates(u.text);
             for (const c of cands) {
               const word = u.text.substr(c.start, c.end - c.start).trim();
               if (!word || ignoreSet.has(word)) continue;
-              
-              const exists = findings.some((f) => f.positions.some((p) => p.unit === u && p.start === c.start));
-              if (!exists) {
+
+              const ok = u.idx + ":" + c.start;
+              if (!occupied.has(ok)) {
+                occupied.add(ok);
                 const f = makeFinding("cand", word, "", CAND_KIND[c.kind] || "จุดน่าสงสัย", [{ unit: u, start: c.start, len: c.end - c.start }]);
                 findings.push(f);
               }
@@ -807,7 +831,7 @@ async function runCheck() {
       }
     }
 
-    // Step 3: รัน AI Engine (ตรวจทั้งข้อความอัตโนมัติ)
+    // 3. โหมด AI Engine (LM Studio / Cloud API)
     if (useAI && !cancelled) {
       const profile = activeProfile();
       chunkLimit = profile.chunkLimit;
@@ -818,16 +842,19 @@ async function runCheck() {
       setStatus(`AI (${profile.name}) กำลังตรวจ ${total} ช่วง...`);
       progressStart(total, "AI Engine");
 
+      const systemPrompt = $("systemPrompt") ? $("systemPrompt").value.trim() : "";
+      const isThinkOff = profile.think === "off" || profile.think === "disabled" || profile.think === "ปิด";
+      const temperature = typeof profile.temperature === "number" ? profile.temperature : 0.3;
+
       const worker = async (i) => {
         if (cancelled) return;
         const chunk = aiChunks[i];
-        const isThinkOff = profile.think === "off" || profile.think === "disabled" || profile.think === "ปิด";
 
         const req = {
-          system: $("systemPrompt") ? $("systemPrompt").value.trim() : "",
+          system: systemPrompt,
           user: buildUserMessage(chunk.parts.join("\n"), false),
           maxTokens: profile.maxTokens,
-          temperature: typeof profile.temperature === "number" ? profile.temperature : 0.3,
+          temperature,
           chat_template_config: { enable_thinking: !isThinkOff },
           thinking: { type: isThinkOff ? "disabled" : "enabled" },
           reasoning_effort: isThinkOff ? "none" : (profile.think || "medium")
@@ -843,7 +870,7 @@ async function runCheck() {
           Tele.failed(`ช่วง ${i + 1}/${total}`, friendlyError(e, profile));
         } finally {
           if (live) { live.busy--; live.done++; }
-          renderFindings();
+          renderSoon();
           renderStats();
         }
       };
@@ -856,6 +883,7 @@ async function runCheck() {
     progressEnd();
     toggleRunning(false);
     renderStats();
+    renderFindings();
   }
 
   const visibleCount = findings.filter((f) => !f.hidden).length;
@@ -867,7 +895,7 @@ async function runCheck() {
 }
 
 /* ============================================================
- *  INIT & ACCORDION
+ *  INIT & ACCORDIONS
  * ============================================================ */
 function initAccordions() {
   const accs = document.getElementsByClassName("acc");
@@ -879,7 +907,7 @@ function initAccordions() {
     if (!head || !body) continue;
     const apply = (open) => {
       body.style.display = open ? "block" : "none";
-      if (ind) ind.textContent = open ? "-" : "+";
+      if (ind) ind.textContent = open ? "\u2212" : "+";
     };
     let open = acc.getAttribute("data-open") === "1";
     apply(open);
@@ -890,9 +918,6 @@ function initAccordions() {
   }
 }
 
-/* ============================================================
- *  PRESETS & SYSTEM INSTRUCTION MANAGEMENT
- * ============================================================ */
 function getPresetPrompt(key) {
   return (BUILTIN_PRESETS[key] || customPresets[key] || {}).prompt || "";
 }
@@ -902,10 +927,10 @@ function renderPresetOptions(selectedKey) {
   if (!sel) return;
   sel.innerHTML = "";
   const add = (k, label) => { const o = el("option", "", label); o.value = k; sel.appendChild(o); };
-  
+
   Object.keys(BUILTIN_PRESETS).forEach((k) => add(k, BUILTIN_PRESETS[k].name));
   Object.keys(customPresets).forEach((k) => add(k, "* " + customPresets[k].name));
-  
+
   sel.value = BUILTIN_PRESETS[selectedKey] || customPresets[selectedKey] ? selectedKey : "strict_proofread";
   if ($("systemPrompt")) {
     $("systemPrompt").value = getPresetPrompt(sel.value);
@@ -969,12 +994,28 @@ function initPresets() {
   }
 }
 
+function togglePanel(showId, hideId) {
+  const box = $(showId);
+  if (!box) return;
+  const open = box.style.display !== "block";
+  box.style.display = open ? "block" : "none";
+  if (open && $(hideId)) $(hideId).style.display = "none";
+}
+if ($("btnHelp")) $("btnHelp").addEventListener("click", () => togglePanel("helpBox", "aboutBox"));
+if ($("btnAbout")) $("btnAbout").addEventListener("click", () => togglePanel("aboutBox", "helpBox"));
+
+if ($("btnOpenGithub")) {
+  $("btnOpenGithub").addEventListener("click", () => {
+    shell.openExternal("https://github.com/PyThaiNLP/pythainlp");
+  });
+}
+
 function init() {
   initAccordions();
   ignoreSet = new Set(lsGet(K_IGNORE, []));
-  
+
   initSegmenter();
-  
+
   updateIgnoreLabel();
   initPresets();
   initSettings();
