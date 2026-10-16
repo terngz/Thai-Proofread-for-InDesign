@@ -6,14 +6,11 @@
  *  - ตัวเรียกโมเดลแบบรวมศูนย์ (retry / timeout / ปรับพารามิเตอร์อัตโนมัติเมื่อโมเดลไม่รองรับ)
  *  - Telemetry (จำนวน token, ความเร็ว, บันทึกการทำงาน)
  *  - ตัวเรียกบริการตรวจสะกดภายนอก (PyThaiNLP)
- *  โหลดก่อน index.js ; ใช้ RESPONSE_SCHEMA ที่ประกาศใน index.js (อ้างตอนเรียกใช้เท่านั้น)
  * ============================================================ */
 
 const K_PROFILES = "ai_proofread_profiles_v2";
 const K_KEY_PREFIX = "ai_proofread_key_";
 
-// jsonMode: structured = บังคับโครงสร้าง JSON (json_schema / tool use) | object = json_object | off = ไม่บังคับ
-// URL / ชื่อโมเดลของแต่ละเจ้าเปลี่ยนได้ ควรเทียบกับเอกสารของผู้ให้บริการอีกครั้ง
 const PROVIDER_PRESETS = {
   lmstudio: { label: "LM Studio (Local)", type: "openai", baseUrl: "http://127.0.0.1:1234/v1", needsKey: false, cloud: false, tokenParam: "max_tokens", jsonMode: "structured", parallel: 1, chunkLimit: 800, timeoutSec: 180 },
   ollama: { label: "Ollama (Local)", type: "openai", baseUrl: "http://127.0.0.1:11434/v1", needsKey: false, cloud: false, tokenParam: "max_tokens", jsonMode: "structured", parallel: 1, chunkLimit: 800, timeoutSec: 180 },
@@ -38,8 +35,8 @@ function pLsSet(key, val) {
 }
 
 let ProfileStore = { active: "", list: [] };
-const keyCache = {};          // id -> API key (อยู่ในหน่วยความจำเท่านั้น)
-const capsByProfile = {};     // id -> ความสามารถที่ตรวจพบระหว่างใช้งาน (เช่น temperature ใช้ไม่ได้)
+const keyCache = {};
+const capsByProfile = {};
 
 function presetOf(profile) { return PROVIDER_PRESETS[profile.preset] || PROVIDER_PRESETS.custom; }
 function providerType(profile) { return presetOf(profile).type; }
@@ -59,14 +56,25 @@ function makeProfile(presetId, name) {
     chunkLimit: p.chunkLimit,
     jsonMode: p.jsonMode,
     lmNative: true,
-    cloudAck: false
+    cloudAck: false,
+    maxTokens: 1500,
+    think: "off",
+    thinkBudget: 0
   };
+}
+
+function migrateProfile(p) {
+  if (p.maxTokens === undefined) p.maxTokens = 1500;
+  if (p.think === undefined) p.think = "off";
+  if (p.thinkBudget === undefined) p.thinkBudget = 0;
+  return p;
 }
 
 function loadProfiles() {
   const saved = pLsGet(K_PROFILES, null);
   if (saved && Array.isArray(saved.list) && saved.list.length) {
     ProfileStore = saved;
+    ProfileStore.list.forEach(migrateProfile);
     if (!ProfileStore.list.some((p) => p.id === ProfileStore.active)) ProfileStore.active = ProfileStore.list[0].id;
   } else {
     const p = makeProfile("lmstudio");
@@ -90,9 +98,8 @@ function decodeBytes(v) {
   return s;
 }
 
-// พยายามใช้ secureStorage ของ UXP ก่อน ถ้าใช้ไม่ได้ค่อยถอยไป localStorage (ไม่เข้ารหัส)
 const KeyStore = {
-  mode: "unknown", // "secure" | "plain"
+  mode: "unknown",
   _ss() {
     try {
       const u = require("uxp");
@@ -200,7 +207,7 @@ function friendlyError(e, profile) {
   const snip = e && e.body ? extractErrMsg(e.body) : "";
   return `${name}: ${hint}${snip ? " — " + snip : ""}`;
 }
-// ข้อผิดพลาดที่ลองใหม่ก็ไม่หาย -> หยุดทั้งงาน
+
 function isFatalError(e) {
   return !!e && (e.status === 401 || e.status === 403 || e.status === 404 || e.status === 400);
 }
@@ -220,24 +227,85 @@ async function providerListModels(profile) {
   const base = profile.baseUrl.replace(/\/+$/, "");
   const t0 = Date.now();
   let ids;
+  const meta = {};
+  const cleanId = (id) => String(id || "").replace(/^models\//, "");
+  const ctxOf = (m) => m.context_length || m.context_window || m.max_context_length || m.max_input_tokens || m.inputTokenLimit || 0;
   if (providerType(profile) === "anthropic") {
     const data = await httpJson(base + "/models?limit=100", { method: "GET", headers: anthropicHeaders(key) }, 20);
-    ids = (data.data || []).map((m) => String(m.id));
+    const raw = data.data || [];
+    ids = raw.map((m) => String(m.id));
+    raw.forEach((m) => { meta[m.id] = { ctx: ctxOf(m) }; });
   } else {
     const headers = {};
     if (key) headers["Authorization"] = "Bearer " + key;
     const data = await httpJson(base + "/models", { method: "GET", headers }, 20);
-    ids = (data.data || data.models || []).map((m) => String(m.id || m.name || ""));
-    ids = ids.map((id) => id.replace(/^models\//, "")).filter((id) => id && !/embed|whisper|tts|dall-e|moderation|rerank|transcribe|realtime|audio|image/i.test(id));
+    const raw = data.data || data.models || [];
+    raw.forEach((m) => {
+      const id = cleanId(m.id || m.name);
+      const sp = Array.isArray(m.supported_parameters) ? m.supported_parameters : null;
+      meta[id] = { ctx: ctxOf(m), reasoning: sp ? (sp.indexOf("reasoning") >= 0 || sp.indexOf("include_reasoning") >= 0) : undefined };
+    });
+    ids = raw.map((m) => cleanId(m.id || m.name)).filter((id) => id && !/embed|whisper|tts|dall-e|moderation|rerank|transcribe|realtime|audio|image/i.test(id));
+    if (profile.preset === "lmstudio") {
+      try {
+        const nat = await httpJson(base.replace(/\/v1$/, "") + "/api/v0/models", { method: "GET", headers }, 10);
+        (nat.data || []).forEach((m) => {
+          meta[m.id] = Object.assign(meta[m.id] || {}, {
+            ctx: m.loaded_context_length || m.max_context_length || 0,
+            maxCtx: m.max_context_length || 0,
+            loaded: m.state === "loaded",
+            quant: m.quantization || ""
+          });
+        });
+      } catch (e) {}
+    }
   }
   ids.sort();
-  return { ids, ms: Date.now() - t0 };
+  return { ids, ms: Date.now() - t0, meta };
+}
+
+/* ---------------- Thinking / Reasoning ---------------- */
+const LOCAL_PRESETS = ["lmstudio", "ollama", "custom"];
+const THINK_OFF_MAP = { openai: "minimal", gemini: "none", groq: "none", xai: "low" };
+const THINK_EFFORT_PRESETS = ["openai", "gemini", "groq", "xai", "lmstudio", "ollama", "custom"];
+const THINK_BUDGET_DEFAULT = { low: 2048, medium: 6000, high: 12000 };
+
+function thinkNote(preset) {
+  const base = "ถ้าโมเดลไม่รองรับ ปลั๊กอินจะข้ามค่านี้ให้เอง งานพิสูจน์อักษรไม่ต้องคิดลึก ปิดหรือ 'ต่ำ' จะเร็วและประหยัดกว่า ถ้าเปิดควรเพิ่ม MAX TOKENS";
+  if (preset === "anthropic") return "Claude: ใช้ extended thinking ตาม BUDGET (ขั้นต่ำ 1024) เมื่อเปิดจะไม่บังคับ tool JSON และไม่ส่ง temperature. " + base;
+  if (preset === "openai") return "OpenAI: ส่งเป็น reasoning_effort (ปิด = minimal) ใช้ได้กับโมเดลสาย reasoning. " + base;
+  if (preset === "gemini") return "Gemini: ส่งเป็น reasoning_effort (ปิด = none ใช้ได้เฉพาะรุ่นที่ปิด thinking ได้). " + base;
+  if (preset === "openrouter") return "OpenRouter: ส่งเป็น reasoning.effort. " + base;
+  if (preset === "groq" || preset === "xai") return "ส่งเป็น reasoning_effort (บางรุ่นเท่านั้น). " + base;
+  if (LOCAL_PRESETS.indexOf(preset) >= 0) return "ส่ง chat_template_config หรือ reasoning_effort สั่งให้ LM Studio ปิด Thinking บังคับปิดความคิดลึกแบบครอบจักรวาล. " + base;
+  return "ผู้ให้บริการนี้ไม่มีพารามิเตอร์ thinking มาตรฐาน ปลั๊กอินจะไม่ส่งค่านี้";
+}
+
+function applyThinkOpenAI(profile, caps, body) {
+  const th = profile.think || "off";
+  if (th === "auto" || caps.think === false) return;
+  const pid = profile.preset;
+  const isOff = th === "off" || th === "disabled" || th === "ปิด";
+
+  if (isOff) {
+    // 🟢 ส่งสวิตช์ปิด Thinking ทุกรูปแบบที่ LM Studio / llama.cpp / OpenAI ดักอ่าน
+    body.reasoning_effort = "none";
+    body.reasoning = "none";
+    body.chat_template_config = { enable_thinking: false };
+    body.thinking = { type: "disabled" };
+  } else {
+    if (pid === "openrouter") { body.reasoning = { effort: th }; return; }
+    body.reasoning_effort = th;
+    body.chat_template_config = { enable_thinking: true };
+    body.thinking = { type: "enabled" };
+  }
 }
 
 /* ---------------- เรียกโมเดล ---------------- */
 function adaptOpenAICaps(caps, profile, errText) {
   const t = String(errText || "").toLowerCase();
   const mode = caps.jsonMode || profile.jsonMode;
+  if (/reasoning|thinking/.test(t) && caps.think !== false && (profile.think || "auto") !== "auto") { caps.think = false; return true; }
   if (/temperature/.test(t) && caps.temperature !== false) { caps.temperature = false; return true; }
   if (/max_completion_tokens|max_tokens/.test(t) && !caps.tokenSwapped) {
     const cur = caps.tokenParam || presetOf(profile).tokenParam || "max_tokens";
@@ -252,6 +320,7 @@ function adaptOpenAICaps(caps, profile, errText) {
 
 function adaptAnthropicCaps(caps, profile, errText) {
   const t = String(errText || "").toLowerCase();
+  if (/thinking|budget_tokens/.test(t) && caps.think !== false && (profile.think || "auto") !== "auto") { caps.think = false; return true; }
   if (/temperature/.test(t) && caps.temperature !== false) { caps.temperature = false; return true; }
   if ((caps.jsonMode || profile.jsonMode) === "structured") { caps.jsonMode = "off"; return true; }
   return false;
@@ -266,13 +335,26 @@ async function completeOpenAI(profile, req, caps) {
   for (let attempt = 0; attempt < 6; attempt++) {
     const useNative = profile.preset === "lmstudio" && profile.lmNative !== false && !caps.nativeFail;
     const url = useNative ? base.replace(/\/v1$/, "") + "/api/v0/chat/completions" : base + "/chat/completions";
+    
+    // 🟢 จัดการ Payload ส่งไปที่ API ให้สอดคล้องกับค่าที่ผู้ใช้กำหนดใน UXP
     const body = {
       messages: [{ role: "system", content: req.system }, { role: "user", content: req.user }],
       stream: false
     };
+
     if (profile.model) body.model = profile.model;
-    if (caps.temperature !== false) body.temperature = Number(profile.temperature) || 0;
-    body[caps.tokenParam || presetOf(profile).tokenParam || "max_tokens"] = req.maxTokens;
+    
+    // 🟢 ส่ง Temperature จาก Profile / Request
+    const tempVal = req.temperature !== undefined ? req.temperature : profile.temperature;
+    if (caps.temperature !== false) body.temperature = Number(tempVal) || 0;
+
+    // 🟢 ส่ง Thinking Mode
+    applyThinkOpenAI(profile, caps, body);
+
+    // 🟢 ส่ง Max Tokens
+    const tokenKey = caps.tokenParam || presetOf(profile).tokenParam || "max_tokens";
+    body[tokenKey] = req.maxTokens || profile.maxTokens || 1500;
+
     const mode = caps.jsonMode || profile.jsonMode;
     if (mode === "structured") body.response_format = RESPONSE_SCHEMA;
     else if (mode === "object") body.response_format = { type: "json_object" };
@@ -307,14 +389,22 @@ async function completeAnthropic(profile, req, caps) {
   const key = keyCache[profile.id] || "";
   const base = profile.baseUrl.replace(/\/+$/, "");
   for (let attempt = 0; attempt < 4; attempt++) {
+    const th = profile.think || "auto";
+    const useThinking = (th === "low" || th === "medium" || th === "high") && caps.think !== false;
     const body = {
       model: profile.model,
-      max_tokens: req.maxTokens,
+      max_tokens: req.maxTokens || profile.maxTokens || 1500,
       system: req.system,
       messages: [{ role: "user", content: req.user }]
     };
-    if (caps.temperature !== false) body.temperature = Number(profile.temperature) || 0;
-    if ((caps.jsonMode || profile.jsonMode) === "structured") {
+    if (useThinking) {
+      const budget = Math.max(1024, parseInt(profile.thinkBudget, 10) || THINK_BUDGET_DEFAULT[th]);
+      body.thinking = { type: "enabled", budget_tokens: budget };
+      body.max_tokens = (req.maxTokens || profile.maxTokens || 1500) + budget;
+    } else if (caps.temperature !== false) {
+      body.temperature = Number(profile.temperature) || 0;
+    }
+    if (!useThinking && (caps.jsonMode || profile.jsonMode) === "structured") {
       body.tools = [{
         name: "report_errors",
         description: "รายงานจุดที่ผิด ถ้าไม่พบจุดผิดให้ส่ง errors เป็น array ว่าง",
@@ -340,7 +430,6 @@ async function completeAnthropic(profile, req, caps) {
   throw new HttpError("ปรับพารามิเตอร์แล้วยังใช้ไม่ได้", 400);
 }
 
-// req = { system, user, maxTokens }  ->  { text, inTok, outTok, tps, ttft, ms, finish }
 async function providerComplete(profile, req) {
   const caps = capsByProfile[profile.id] || (capsByProfile[profile.id] = {});
   const retries = Math.max(0, parseInt(profile.retries, 10) || 0);

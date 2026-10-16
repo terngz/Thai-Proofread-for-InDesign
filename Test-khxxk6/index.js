@@ -1,78 +1,28 @@
 "use strict";
-const { app, NothingEnum } = require("indesign");
+const { app, NothingEnum, ScriptLanguage, UndoModes } = require("indesign");
 
 /* ============================================================
  *  CONFIG
  * ============================================================ */
-let chunkLimit = 800;           // จำนวนตัวอักษรต่อ 1 request (ตั้งจากโปรไฟล์ที่ใช้อยู่)
-const MAX_ORIGINAL_LEN = 30;    // ถ้า AI ส่ง "จุดผิด" ยาวกว่านี้ = กำลังเกลาประโยค -> ตัดทิ้ง
+let chunkLimit = 800;
+const MAX_ORIGINAL_LEN = 30;
 const K_PRESETS = "ai_proofread_custom_presets";
 const K_IGNORE = "ai_proofread_ignore";
 const THAI = /[\u0E01-\u0E7F]/;
 const LATIN_WORD = /^[A-Za-z][A-Za-z'\u2019]*$/;
-// ข้อความนี้มีภาษาที่ผู้ใช้เลือกตรวจหรือไม่
+
 function wantText(t) { return (langs.th && THAI.test(t)) || (langs.en && /[A-Za-z]{3}/.test(t)); }
 const MARK_L = "【";
 const MARK_R = "】";
-const CAND_CONTEXT = 30;        // โหมดจุดน่าสงสัย: ส่งบริบทรอบคำกี่ตัวอักษร
-const RED = "err";    // ชื่อ class ของ #status (สีกำหนดใน CSS ตามธีม)
+const CAND_CONTEXT = 30;
+const RED = "err";
 const GREEN = "ok";
 const K_ACC = "ai_proofread_accordion";
-const K_THEME = "ai_proofread_theme";
 
 const BUILTIN_PRESETS = {
   strict_proofread: {
-    name: "Proofreader ไทย + อังกฤษ (ผิดอย่างเดียว ไม่เกลา)",
-    prompt: `คุณคือ "พิสูจน์อักษร" (Proofreader) ภาษาไทยและภาษาอังกฤษ ไม่ใช่บรรณาธิการ
-ข้อความอาจเป็นไทย อังกฤษ หรือปนกัน ให้ตรวจแต่ละภาษาตามกติกาของภาษานั้น
-ชี้เฉพาะจุดที่ผิดชัดเจนเท่านั้น ห้ามปรับสำนวน ห้ามเรียบเรียงใหม่ ห้ามแตะประโยคที่ถูกอยู่แล้ว
-
-ตรวจเฉพาะ:
-ภาษาไทย
-1. สะกดผิด / พิมพ์ผิด เช่น "ประเทส" → "ประเทศ"
-2. คำเกินหรือคำซ้ำที่พิมพ์เกินโดยไม่ตั้งใจ เช่น "ผมไปไป โรงเรียน" → "ไป"
-3. อักขระแปลกปลอม สระ/วรรณยุกต์ผิดตำแหน่งหรือซ้อนกัน
-ภาษาอังกฤษ
-4. สะกดผิด (spelling) เช่น "recieve" → "receive", "teh" → "the"
-5. คำซ้ำติดกันโดยไม่ตั้งใจ เช่น "the the" → "the" และไวยากรณ์ที่ผิดชัดเจนมาก เช่น "a apple" → "an apple"
-ทั้งสองภาษา
-6. ตัวอักษรหรือคำของอีกภาษาที่หลุดเข้ามาผิดที่ เช่น "โครงกaาร" → "โครงการ"
-
-ไม่ถือว่าผิด: ชื่อเฉพาะ ชื่อแบรนด์ ตัวย่อ คำทับศัพท์ ศัพท์เทคนิค ภาษาพูด/สแลง การสะกดแบบ US หรือ UK (color / colour) และเรื่องสไตล์การเลือกใช้คำ
-ถ้าไม่แน่ใจ 100% ห้ามรายงาน
-
-กติกาการตอบ:
-- "original" ต้องคัดลอกจากต้นฉบับตรงตัวอักษร และสั้นที่สุด (1 คำ หรือไม่เกิน 15 ตัวอักษร) ห้ามเอาทั้งประโยค
-- "suggestion" คือคำที่ถูกต้องที่ใช้แทน original
-- "issue" อธิบายสั้น ๆ ไม่เกิน 8 คำ`
-  }
-};
-
-const RESPONSE_SCHEMA = {
-  type: "json_schema",
-  json_schema: {
-    name: "proofread_result",
-    strict: true,
-    schema: {
-      type: "object",
-      additionalProperties: false,
-      properties: {
-        errors: {
-          type: "array",
-          items: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              original: { type: "string" },
-              suggestion: { type: "string" },
-              issue: { type: "string" }
-            },
-            required: ["original", "suggestion", "issue"]
-          }
-        }
-      },
-      required: ["errors"]
-    }
+    name: "Proofreader ไทย + อังกฤษ",
+    prompt: `คุณคือ "นักพิสูจน์อักษร" (Proofreader) ที่เชี่ยวชาญทั้งภาษาไทยและภาษาอังกฤษ ไม่ใช่บรรณาธิการ โดยมีหน้าที่ในการตรวจแต่ละภาษาทั้งไทยและอังกฤษ ตามเงื่อนไขของภาษานั้น ๆ เช่น ภาษาไทยใช้หลักของราชบัณฑิตยสถาน ส่วนภาษาอังกฤษใช้หลักของ Cambridge หรือ Oxford ก็ได้ โดยอิงจากบริบทในข้อความ หน้าที่คือ ตรวจหาคำผิด ชี้เฉพาะจุดที่มีคำที่สะกดผิด สะกดเกิน เจออักขระผิดตำแหน่ง เจอสระหรือวรรณยุกต์ซ็อน เป็นต้น ทำหน้าที่ ตรวจพิสูจน์อักษร ไม่ใช่หน้าที่ของบรรณาธิการ ห้ามปรับสำนวน ห้ามเรียบเรียงใหม่`
   }
 };
 
@@ -88,10 +38,10 @@ let cancelled = false;
 let pendingConfirm = null;
 let live = null;
 let deleteArmedKey = null;
-let langs = { th: true, en: true };   // ภาษาที่เลือกตรวจ
+let langs = { th: true, en: true };
 let enDict = null;
-let segmenter = null;   // Intl.Segmenter("th")
-let dict = null;        // Set ของคำไทยจาก words_th.js
+let segmenter = null;
+let dict = null;
 
 function el(tag, cls, text) {
   const e = document.createElement(tag);
@@ -101,8 +51,10 @@ function el(tag, cls, text) {
 }
 function setStatus(msg, color) {
   const s = $("status");
-  s.textContent = msg;
-  s.className = color || "";
+  if (s) {
+    s.textContent = msg;
+    s.className = color || "";
+  }
 }
 function lsGet(key, fallback) {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; }
@@ -118,7 +70,6 @@ function getContents(o) {
   if (Array.isArray(c)) c = c.join("");
   return typeof c === "string" ? c : "";
 }
-// แสดงอักขระที่มองไม่เห็นให้อ่านออก
 function visible(s) {
   let t = s.replace(/[\u200B-\u200D\u2060\uFEFF\uFFFD\uE000-\uF8FF]/g,
     (c) => "[U+" + c.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0") + "]");
@@ -127,9 +78,8 @@ function visible(s) {
 }
 
 /* ============================================================
- *  RULE-BASED CHECKS  (เร็ว ไม่ใช้ AI ไม่เดา)
+ *  RULE-BASED CHECKS
  * ============================================================ */
-// ==== RULES START ====
 function runRules(text, opts) {
   const out = [];
   const add = (start, original, suggestion, issue) => out.push({ start, original, suggestion, issue });
@@ -138,7 +88,6 @@ function runRules(text, opts) {
     let m;
     while ((m = re.exec(text)) !== null) { fn(m); if (m[0].length === 0) re.lastIndex++; }
   };
-  // เพิ่มพยัญชนะตัวหน้าเป็น context เพื่อให้อ่านง่าย
   const TH_ON = !opts || opts.th !== false;
   const scanTh = (re, fn) => { if (TH_ON) scan(re, fn); };
   const ctx = (idx, len, replacement, issue) => {
@@ -146,46 +95,37 @@ function runRules(text, opts) {
     add(idx - p.length, p + text.substr(idx, len), replacement == null ? "" : p + replacement, issue);
   };
 
-  // 1) สระ/วรรณยุกต์/อักขระซ้ำติดกัน (สระเบิ้ล, ะะ, เเ ฯลฯ)
   scanTh(/([\u0E30-\u0E3A\u0E40-\u0E4E])\1+/g, (m) => {
     if (m[1] === "\u0E40" && m[0].length === 2) return add(m.index, m[0], "\u0E41", "เ สองตัวติดกัน (น่าจะเป็น แ)");
     if (/[\u0E40-\u0E45]/.test(m[1])) return add(m.index, m[0], m[1], "อักขระซ้ำติดกัน");
     ctx(m.index, m[0].length, m[1], "สระ/วรรณยุกต์ซ้ำติดกัน");
   });
 
-  // 2) สระบน/วรรณยุกต์ซ้อนผิดลำดับ (วรรณยุกต์ซ้อนวรรณยุกต์, วรรณยุกต์อยู่ก่อนสระบน ฯลฯ)
   scanTh(/[\u0E31\u0E34-\u0E37\u0E47]{2}|[\u0E48-\u0E4B]{2}|[\u0E48-\u0E4B][\u0E31\u0E34-\u0E37]/g, (m) => {
-    if (m[0][0] === m[0][1]) return; // กรณีซ้ำตัวเดิม กฎข้อ 1 จับไปแล้ว
+    if (m[0][0] === m[0][1]) return;
     ctx(m.index, m[0].length, null, "สระ/วรรณยุกต์ซ้อนกันผิดตำแหน่ง");
   });
 
-  // 3) นิคหิต + สระอา (ํา) ควรเป็นสระอำ
   scanTh(/\u0E4D\u0E32/g, (m) => ctx(m.index, 2, "\u0E33", "นิคหิต+สระอา ควรใช้สระอำ"));
 
-  // 4) สระ/วรรณยุกต์ลอย (ไม่มีพยัญชนะนำหน้า)
   scanTh(/(?:^|[^\u0E01-\u0E4E])[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g,
     (m) => add(m.index, m[0], "", "สระ/วรรณยุกต์ลอย ไม่มีพยัญชนะนำหน้า"));
 
-  // 5) ตัวอังกฤษ 1 ตัวแทรกกลางคำไทย
   scanTh(/[\u0E01-\u0E7F][A-Za-z][\u0E01-\u0E7F]/g,
     (m) => add(m.index, m[0], "", "ตัวอักษรอังกฤษแทรกกลางคำไทย"));
 
-  // 6) อักขระแปลกปลอม / อักขระล่องหน / ฟอนต์ไทยเก่า (Private Use)
   scan(/[\uFFFD\uE000-\uF8FF\uFEFF\u200B-\u200D\u2060]/g, (m) => {
     const hex = "U+" + m[0].charCodeAt(0).toString(16).toUpperCase().padStart(4, "0");
     const hidden = /[\uFEFF\u200B-\u200D\u2060]/.test(m[0]);
     add(m.index, m[0], "", (hidden ? "อักขระล่องหน " : "อักขระแปลกปลอม ") + hex);
   });
 
-  // 7) พยัญชนะซ้ำ 3 ตัวขึ้นไป (มากกก, สบายยย)
   scanTh(/([\u0E01-\u0E2E])\1{2,}/g, (m) => add(m.index, m[0], m[1], "พยัญชนะซ้ำเกิน"));
 
-  // 8) คำอังกฤษซ้ำติดกัน (the the)
   if (opts && opts.en) {
     scan(/\b([A-Za-z]{2,})[ \t]+\1\b/gi, (m) => add(m.index, m[0], m[1], "คำอังกฤษซ้ำติดกัน"));
   }
 
-  // 9) เว้นวรรคไม้ยมก / เว้นวรรคซ้อน (เปิด/ปิดได้)
   if (opts && opts.spacing) {
     scanTh(/([\u0E01-\u0E45\u0E47-\u0E7F]{1,4})\u0E46/g,
       (m) => add(m.index, m[0], m[1] + " \u0E46", "ไม้ยมกต้องเว้นวรรคหน้า"));
@@ -195,20 +135,18 @@ function runRules(text, opts) {
   }
   return out;
 }
-// ==== RULES END ====
 
 /* ============================================================
- *  LM STUDIO
+ *  CHUNK BUILDERS & PARSER
  * ============================================================ */
 function normalizeForAI(text) {
   return text
     .replace(/\t/g, " ")
     .replace(/\r\n?|\u2028/g, "\n")
-    .replace(/[\u0000-\u0009\u000B-\u001F\uFFFC\u00AD]/g, "") // อักขระควบคุม/anchored object/discretionary hyphen ของ InDesign
+    .replace(/[\u0000-\u0009\u000B-\u001F\uFFFC\u00AD]/g, "")
     .replace(/\n+$/, "");
 }
 
-// ตัดที่ขอบคำไทย (ไม่ตัดกลางคำ) เมื่อไม่มีช่องว่างให้ตัด
 function wordBoundaryBefore(s, limit) {
   if (!segmenter) return limit;
   let last = 0;
@@ -232,7 +170,6 @@ function splitLong(s, limit) {
   return out;
 }
 
-// รวมย่อหน้าสั้น ๆ เป็น chunk เดียว / ซอยย่อหน้ายาวเป็นหลาย chunk
 function buildChunks(units) {
   const chunks = [];
   let cur = { parts: [], units: [], len: 0 };
@@ -252,15 +189,6 @@ function buildChunks(units) {
 }
 
 function buildUserMessage(text, marked) {
-  if (marked) {
-    return `ข้อความด้านล่างเป็นตัวอย่างบริบทสั้น ๆ ระบบคัดมาให้และใส่เครื่องหมาย ${MARK_L} ${MARK_R} ครอบคำที่ "สงสัยว่าอาจผิด" (ยังไม่แน่ใจ อาจเป็นชื่อเฉพาะ ทับศัพท์ หรือคำที่ถูกอยู่แล้ว)
-ให้ตรวจเฉพาะคำที่ถูกครอบ ถ้าผิดจริงให้รายงาน ถ้าถูกต้องห้ามรายงาน และในช่อง original ให้คัดลอกคำนั้นโดยไม่ต้องรวมเครื่องหมาย ${MARK_L} ${MARK_R}
-ตอบเป็น JSON เท่านั้น ในรูปแบบ {"errors":[{"original":"...","suggestion":"...","issue":"..."}]} ถ้าไม่มีที่ผิดให้ตอบ {"errors":[]}
-
-<<<
-${text}
->>>`;
-  }
   return `ตรวจพิสูจน์อักษรข้อความระหว่าง <<< และ >>> แล้วตอบเป็น JSON เท่านั้น ในรูปแบบ {"errors":[{"original":"...","suggestion":"...","issue":"..."}]}
 ถ้าไม่พบจุดผิดให้ตอบ {"errors":[]}
 
@@ -269,8 +197,6 @@ ${text}
 >>>`;
 }
 
-// ==== PARSE START ====
-// คืน array ของ {original,suggestion,issue}  หรือ null ถ้าอ่านผลไม่ออก
 function parseModelJson(raw) {
   const s = String(raw || "")
     .replace(/<think>[\s\S]*?<\/think>/gi, "")
@@ -300,11 +226,9 @@ function parseModelJson(raw) {
   if (/"errors"\s*:\s*\[\s*\]/.test(s) || s === "[]") return [];
   return null;
 }
-// ==== PARSE END ====
 
 /* ============================================================
- *  โหมด "จุดน่าสงสัย": ตัดคำด้วย Intl.Segmenter + เทียบพจนานุกรม
- *  แล้วส่งให้ AI ตัดสินเฉพาะจุด (เร็วกว่า และมโนน้อยกว่า)
+ *  LOCAL DICTIONARY & CANDIDATES SCANNER
  * ============================================================ */
 function initSegmenter() {
   try {
@@ -312,7 +236,7 @@ function initSegmenter() {
     const sg = new Intl.Segmenter("th", { granularity: "word" });
     let n = 0;
     for (const x of sg.segment("สวัสดีครับขอบคุณมาก")) n++;
-    if (n < 3) return false; // ถ้าไม่มีพจนานุกรมไทยใน ICU จะได้ก้อนเดียว
+    if (n < 3) return false;
     segmenter = sg;
     return true;
   } catch (e) { return false; }
@@ -326,6 +250,14 @@ function enDictAvailable() {
   return typeof EN_WORDS_TEXT === "string" && EN_WORDS_TEXT.length > 1000;
 }
 
+function getDict() {
+  if (dict) return dict;
+  dict = new Set();
+  if (dictAvailable()) THAI_WORDS_TEXT.split("\n").forEach((w) => { if (w) dict.add(w); });
+  ignoreSet.forEach((w) => dict.add(w));
+  return dict;
+}
+
 function getEnDict() {
   if (enDict) return enDict;
   enDict = new Set();
@@ -334,23 +266,14 @@ function getEnDict() {
   return enDict;
 }
 
-// คำนี้อยู่ต้นประโยคหรือไม่ (ดูอักขระก่อนหน้าโดยข้ามช่องว่าง/เครื่องหมายคำพูด)
 function isSentenceStart(text, i) {
   let j = i - 1;
   while (j >= 0 && /[ \t"\u201C\u2018'(\[]/.test(text[j])) j--;
   return j < 0 || /[.!?:\r\n\u2028]/.test(text[j]);
 }
 
-function getDict() {
-  if (dict) return dict;
-  dict = new Set();
-  if (dictAvailable()) THAI_WORDS_TEXT.split("\n").forEach((w) => { if (w) dict.add(w); });
-  ignoreSet.forEach((w) => dict.add(w)); // คำที่กด "ละเว้น" ถือเป็นคำที่ถูก
-  return dict;
-}
-
-// คืนช่วงที่น่าสงสัย [{start,end,kind}] : oov = ไม่อยู่ในพจนานุกรม, mixed = ไทยปนอังกฤษในคำเดียว, dup = คำซ้ำติดกัน
 function findCandidates(text) {
+  if (!segmenter) return [];
   const D = getDict();
   const out = [];
   let prev = null;
@@ -358,12 +281,11 @@ function findCandidates(text) {
     const s = sg.segment;
     const start = sg.index;
     const end = start + s.length;
-    // --- คำอังกฤษ ---
     if (LATIN_WORD.test(s)) {
       if (!langs.en || !enDictAvailable()) { prev = null; continue; }
       const lower = s.toLowerCase().replace(/['\u2019]s$/, "");
       let kind = null;
-      const odd = /[A-Z]/.test(s.slice(1));                 // iPhone / NASA / camelCase -> ข้าม
+      const odd = /[A-Z]/.test(s.slice(1));
       const capital = /^[A-Z]/.test(s);
       if (lower.length >= 3 && !odd && (!capital || isSentenceStart(text, start)) && !getEnDict().has(lower)) kind = "en";
       if (!kind && prev && prev.lang === "en" && prev.bare === lower && lower.length >= 2) {
@@ -383,7 +305,7 @@ function findCandidates(text) {
     let kind = null;
     if (/[A-Za-z0-9]/.test(bare)) kind = "mixed";
     else if (!D.has(bare) && bare !== "ณ" && !/^[\u0E50-\u0E59]+$/.test(bare)) {
-      if (!(text[end] === "." && bare.length <= 2)) kind = "oov"; // ข้ามตัวย่อ เช่น "น."
+      if (!(text[end] === "." && bare.length <= 2)) kind = "oov";
     }
     if (!kind && prev && prev.bare === bare && bare.length >= 2) {
       out.push({ start: prev.start, end, kind: "dup" });
@@ -391,55 +313,13 @@ function findCandidates(text) {
       continue;
     }
     if (kind) out.push({ start, end, kind });
-    prev = { bare, start, end };
+    prev = { bare, start };
   }
   return out;
 }
 
-function buildCandidateChunks(units) {
-  const chunks = [];
-  let cur = { parts: [], units: [], len: 0, marked: true };
-  const flush = () => { if (cur.parts.length) chunks.push(cur); cur = { parts: [], units: [], len: 0, marked: true }; };
-  let total = 0;
-  const list = [];
-
-  for (const u of units) {
-    const cands = findCandidates(u.text);
-    if (!cands.length) continue;
-    total += cands.length;
-    cands.forEach((c) => list.push({ unit: u, start: c.start, len: c.end - c.start, kind: c.kind }));
-
-    const wins = [];
-    for (const c of cands) {
-      const ws = Math.max(0, c.start - CAND_CONTEXT);
-      const we = Math.min(u.text.length, c.end + CAND_CONTEXT);
-      const last = wins[wins.length - 1];
-      if (last && ws <= last.end + 5) { last.end = Math.max(last.end, we); last.cands.push(c); }
-      else wins.push({ start: ws, end: we, cands: [c] });
-    }
-    for (const w of wins) {
-      let snip = u.text.slice(w.start, w.end);
-      let limit = Infinity; // ใส่เครื่องหมายจากขวาไปซ้าย ข้ามช่วงที่ซ้อนกัน
-      for (let k = w.cands.length - 1; k >= 0; k--) {
-        const a = w.cands[k].start - w.start;
-        const b = w.cands[k].end - w.start;
-        if (b > limit) continue;
-        snip = snip.slice(0, a) + MARK_L + snip.slice(a, b) + MARK_R + snip.slice(b);
-        limit = a;
-      }
-      snip = normalizeForAI(snip);
-      if (cur.len + snip.length > chunkLimit && cur.parts.length) flush();
-      cur.parts.push(snip);
-      if (cur.units.indexOf(u) < 0) cur.units.push(u);
-      cur.len += snip.length + 1;
-    }
-  }
-  flush();
-  return { chunks, total, list };
-}
-
 /* ============================================================
- *  อ่านข้อความจาก InDesign
+ *  INDESIGN DOM MANIPULATION
  * ============================================================ */
 function collectUnits(scope) {
   const doc = app.activeDocument;
@@ -462,10 +342,9 @@ function collectUnits(scope) {
   };
 
   if (scope === "page") {
-    // ทั้งหน้าปัจจุบัน: ตรวจเฉพาะข้อความที่อยู่ในกรอบบนหน้านี้ (กรอบที่ต่อไปหน้าอื่นจะได้เฉพาะส่วนในกรอบนี้)
     let page = null;
     try { page = app.activeWindow.activePage; } catch (e) {}
-    if (!page) throw new Error("ไม่พบหน้าปัจจุบัน (ต้องอยู่ในมุมมอง Layout ไม่ใช่ Story Editor)");
+    if (!page) throw new Error("ไม่พบหน้าปัจจุบัน (ต้องอยู่ในมุมมอง Layout)");
     const items = page.allPageItems;
     for (let i = 0; i < items.length; i++) {
       if (cname(items[i]) === "TextFrame") addText(items[i], "f");
@@ -476,27 +355,26 @@ function collectUnits(scope) {
   } else {
     const sel = app.selection;
     if (!sel || sel.length === 0) {
-      throw new Error("ยังไม่ได้เลือกอะไร: คลิกในกรอบข้อความ / ลากเลือกข้อความ / เลือกกรอบ (หรือเปลี่ยนขอบเขตเป็น 'หน้าปัจจุบัน' หรือ 'ทั้งเอกสาร')");
+      throw new Error("ยังไม่ได้เลือกอะไร: คลิกในกรอบข้อความ / เลือกกรอบ");
     }
     for (let i = 0; i < sel.length; i++) {
       const item = sel[i];
       const cn = cname(item);
       if (cn === "Table" || cn === "Row" || cn === "Column" || cn === "Cell") {
-        // ตาราง/แถว/คอลัมน์/เซลล์: ตรวจทีละเซลล์
         if (cn === "Cell") addText(item, "c");
         else {
           const cells = item.cells;
           for (let j = 0; j < cells.length; j++) addText(cells.item(j), "c");
         }
       } else if (cn === "TextFrame" || cn === "InsertionPoint") {
-        addText(item.parentStory, "s");        // กรอบ/วางเคอร์เซอร์ = ทั้ง story (รวมกรอบที่ต่อกัน)
+        addText(item.parentStory, "s");
       } else if (item.parentStory && typeof item.contents !== "undefined") {
-        const t = getContents(item);           // ปาดเลือกข้อความ = เฉพาะที่ปาด
+        const t = getContents(item);
         if (t) units.push({ obj: item, text: t });
       } else if (item.textFrames && item.textFrames.length) {
         for (let j = 0; j < item.textFrames.length; j++) addText(item.textFrames.item(j).parentStory, "s");
       } else if (item.paragraphs && item.paragraphs.length) {
-        addText(item, "o"); // ชนิดอื่นที่มีข้อความ (ตัวดักสุดท้าย)
+        addText(item, "o");
       }
     }
   }
@@ -504,16 +382,13 @@ function collectUnits(scope) {
   return units;
 }
 
-/* ============================================================
- *  ไปที่คำใน InDesign (เหมือน Find: เลือกคำ + เลื่อนหน้าจอไปให้)
- * ============================================================ */
 function findFirst(obj, str) {
   try {
     app.findTextPreferences = NothingEnum.nothing;
     app.changeTextPreferences = NothingEnum.nothing;
     app.findChangeTextOptions.caseSensitive = true;
     app.findChangeTextOptions.wholeWord = false;
-    app.findTextPreferences.findWhat = str.replace(/\^/g, "^^"); // ^ เป็น meta char ของ Find
+    app.findTextPreferences.findWhat = str.replace(/\^/g, "^^");
     const found = obj.findText();
     return found && found.length ? found[0] : null;
   } finally {
@@ -525,13 +400,13 @@ function locate(pos) {
   const unit = pos.unit;
   const expected = unit.text.substr(pos.start, pos.len);
   let cur;
-  try { cur = getContents(unit.obj); } catch (e) { return { err: "ข้อความต้นทางถูกลบ/เปลี่ยนไปแล้ว กรุณากดตรวจใหม่" }; }
-  if (cur !== unit.text) return { err: "ข้อความในเอกสารเปลี่ยนไปแล้ว กรุณากดตรวจใหม่" };
-  try { // วิธีหลัก: ระบุตำแหน่งตัวอักษรตรง ๆ (แม่นกว่าการค้นหาคำ)
+  try { cur = getContents(unit.obj); } catch (e) { return { err: "ข้อความต้นทางถูกลบ/เปลี่ยนไปแล้ว" }; }
+  if (cur !== unit.text) return { err: "ข้อความในเอกสารเปลี่ยนไปแล้ว" };
+  try {
     const r = unit.obj.characters.itemByRange(pos.start, pos.start + pos.len - 1);
     if (getContents(r) === expected) return { range: r };
   } catch (e) {}
-  try { // สำรอง: ใช้ Find
+  try {
     const r = findFirst(unit.obj, expected);
     if (r) return { range: r };
   } catch (e) {}
@@ -542,6 +417,7 @@ function goTo(f, btn) {
   const n = f.positions.length;
   const idx = f.cursor % n;
   f.cursor = idx + 1;
+  f.lastIdx = idx;
   const res = locate(f.positions[idx]);
   if (res.err) { setStatus("" + res.err, RED); return; }
   try {
@@ -550,7 +426,6 @@ function goTo(f, btn) {
       const tfs = res.range.parentTextFrames;
       if (tfs.length) pageObj = tfs[0].parentPage;
     } catch (e) {}
-    // เด้งไปหน้าที่เจอ เฉพาะเมื่อไม่ได้อยู่หน้านั้นอยู่แล้ว (ถ้าอยู่หน้าเดียวกันจะไม่เลื่อนหน้า)
     if (pageObj) {
       try {
         const win = app.activeWindow;
@@ -558,17 +433,14 @@ function goTo(f, btn) {
       } catch (e) {}
     }
     app.select(res.range);
-    if (!pageObj) setStatus("ข้อความนี้อยู่ในส่วนที่ล้นกรอบ (overset) หรืออยู่นอกหน้า จึงมองไม่เห็น", RED);
-    else setStatus(`เลือกคำแล้ว · หน้า ${pageObj.name}${n > 1 ? ` (ตำแหน่งที่ ${idx + 1}/${n})` : ""}`);
+    if (!pageObj) setStatus("ข้อความนี้อยู่ในส่วนที่ล้นกรอบ (overset)", RED);
+    else setStatus(`เลือกคำแล้ว · หน้า ${pageObj.name}`);
   } catch (e) {
     setStatus("เลือกข้อความไม่สำเร็จ: " + (e.message || e), RED);
   }
-  if (btn && n > 1) btn.textContent = `ไปที่จุดนี้ (${idx + 1}/${n} · กดเพื่อไปจุดถัดไป)`;
+  if (btn && n > 1) btn.textContent = `ไปที่จุดนี้ (${idx + 1}/${n})`;
 }
 
-/* ============================================================
- *  RESULT LIST
- * ============================================================ */
 function pageOfFrame(tf) {
   try {
     const pg = tf.parentPage;
@@ -576,7 +448,6 @@ function pageOfFrame(tf) {
   } catch (e) { return null; }
 }
 
-// หาว่าตำแหน่งนี้อยู่หน้าไหน (cache ต่อ unit; ถ้า unit คร่อมหลายกรอบค่อยดูที่ตัวอักษรจริง)
 function resolvePage(pos) {
   if (pos.pageDone) return pos.page;
   pos.pageDone = true;
@@ -602,7 +473,7 @@ function pageLabel(f) {
     const n = pg ? pg.name : "ล้นกรอบ";
     if (names.indexOf(n) < 0) names.push(n);
   });
-  return "หน้า " + names.slice(0, 4).join(", ") + (names.length > 4 ? "…" : "");
+  return "หน้า " + names.slice(0, 4).join(", ");
 }
 
 function makeFinding(kind, original, suggestion, issue, positions) {
@@ -616,7 +487,6 @@ function makeFinding(kind, original, suggestion, issue, positions) {
 
 function buildCard(f) {
   const card = el("div", "card");
-
   const head = el("div");
   head.appendChild(el("span", "tag-" + f.kind, f.kind === "rule" ? "กฎ" : f.kind === "cand" ? "สงสัย" : f.kind === "svc" ? "สะกด" : "AI"));
   head.appendChild(el("span", "err-tag", " "));
@@ -630,78 +500,155 @@ function buildCard(f) {
     sug.appendChild(el("b", "", visible(f.suggestion)));
     card.appendChild(sug);
   }
-  if (f.issue) card.appendChild(el("div", "issue", "สาเหตุ: " + f.issue));
+  
+  // 🟢 แสดงสาเหตุเฉพาะกรณีที่มีรายละเอียดอื่นเพิ่มเติมนอกจาก "สะกดผิด" ทั่วไป
+  if (f.issue && f.issue !== "สะกดผิด") {
+    card.appendChild(el("div", "issue", "สาเหตุ: " + f.issue));
+  }
 
   const row = el("div", "btn-row");
-  const goBtn = el("button", "",
-    "ไปที่จุดนี้" + (f.positions.length > 1 ? ` (พบ ${f.positions.length} ตำแหน่ง)` : ""));
+  const goBtn = el("button", "", "ไปที่จุดนี้" + (f.positions.length > 1 ? ` (${f.positions.length})` : ""));
   goBtn.addEventListener("click", () => goTo(f, goBtn));
+  row.appendChild(goBtn);
+  if (f.suggestion) {
+    const fixBtn = el("button", "", "แก้เลย");
+    fixBtn.addEventListener("click", () => applyFix(f, false));
+    row.appendChild(fixBtn);
+  }
+  card.appendChild(row);
+
+  const row2 = el("div", "btn-row2");
+  if (f.suggestion && f.positions.length > 1) {
+    const allBtn = el("button", "", `แก้ทั้งหมด (${f.positions.length})`);
+    allBtn.addEventListener("click", () => applyFix(f, true));
+    row2.appendChild(allBtn);
+  }
+  const doneBtn = el("button", "", "แก้แล้ว");
+  doneBtn.addEventListener("click", () => { f.hidden = true; renderFindings(); });
   const ignBtn = el("button", "", "ละเว้น");
-  ignBtn.title = "ไม่ใช่คำผิด – ไม่ต้องแจ้งอีกในครั้งต่อไป";
   ignBtn.addEventListener("click", () => {
     ignoreSet.add(f.original);
-    if (dict) dict.add(f.original);
     lsSet(K_IGNORE, Array.from(ignoreSet));
     f.hidden = true;
     updateIgnoreLabel();
     renderFindings();
   });
-  row.appendChild(goBtn);
-  row.appendChild(ignBtn);
-  card.appendChild(row);
+  row2.appendChild(doneBtn);
+  row2.appendChild(ignBtn);
+  card.appendChild(row2);
   return card;
+}
+
+function runUndoable(fn, label) {
+  let ran = false, out;
+  try {
+    if (typeof ScriptLanguage !== "undefined" && ScriptLanguage && typeof UndoModes !== "undefined" && UndoModes && app.doScript) {
+      app.doScript(() => { ran = true; out = fn(); }, ScriptLanguage.UXPSCRIPT, [], UndoModes.ENTIRE_SCRIPT, label);
+      return out;
+    }
+  } catch (e) { if (ran) return out; }
+  return fn();
+}
+
+function adjustAfterEdit(unit, pos, newLen, drift) {
+  const delta = newLen - pos.len;
+  for (const g of findings) {
+    g.positions = g.positions.filter((q) => {
+      if (q === pos) return false;
+      if (q.unit !== unit) return true;
+      if (drift) return false;
+      if (q.start >= pos.start + pos.len) { q.start += delta; return true; }
+      if (q.start + q.len <= pos.start) return true;
+      return false;
+    });
+    g.cursor = 0;
+    if (!g.positions.length) g.hidden = true;
+  }
+}
+
+function replaceAt(pos, replacement) {
+  const res = locate(pos);
+  if (res.err) return { err: res.err };
+  const unit = pos.unit;
+  const before = unit.text;
+  const want = before.slice(0, pos.start) + replacement + before.slice(pos.start + pos.len);
+  try { res.range.contents = replacement; } catch (e) { return { err: "แก้ข้อความไม่สำเร็จ: " + (e.message || e) }; }
+  let now;
+  try { now = getContents(unit.obj); } catch (e) { return { err: "อ่านข้อความหลังแก้ไม่ได้" }; }
+  const drift = now !== want;
+  unit.text = now;
+  adjustAfterEdit(unit, pos, replacement.length, drift);
+  return { ok: true, drift };
+}
+
+function applyFix(f, all) {
+  if (!f.suggestion) return setStatus("ไม่มีคำแนะนำให้แก้", RED);
+  let targets = all ? f.positions.slice() : [f.positions[f.lastIdx !== undefined && f.lastIdx < f.positions.length ? f.lastIdx : 0]];
+  targets.sort((a, b) => (a.unit === b.unit ? b.start - a.start : a.unit.idx - b.unit.idx));
+  const original = f.original, suggestion = f.suggestion;
+  let done = 0, err = "", drift = false;
+  runUndoable(() => {
+    for (const pos of targets) {
+      const r = replaceAt(pos, suggestion);
+      if (r.err) { err = r.err; break; }
+      done++;
+      if (r.drift) drift = true;
+    }
+  }, "AI Proofreader: แก้คำผิด");
+  renderFindings();
+  if (err) return setStatus((done ? `แก้แล้ว ${done} จุด แต่ ` : "") + err, RED);
+  setStatus(`แก้ "${original}" เป็น "${suggestion}" แล้ว ${done} จุด`, GREEN);
 }
 
 function renderFindings() {
   const list = $("resultList");
+  if (!list) return;
   list.innerHTML = "";
   findings.filter((f) => !f.hidden).sort((a, b) => a.pageOffset - b.pageOffset || a.key - b.key).forEach((f) => list.appendChild(buildCard(f)));
 }
 
 function updateIgnoreLabel() {
-  $("btnClearIgnore").textContent = `ล้างรายการคำที่ละเว้น (${ignoreSet.size})`;
+  if ($("btnClearIgnore")) $("btnClearIgnore").textContent = `ล้างรายการคำที่ละเว้น (${ignoreSet.size})`;
 }
 
-/* ============================================================
- *  MAIN
- * ============================================================ */
 function setDisabled(elm, on) {
+  if (!elm) return;
   elm.disabled = on;
   if (on) elm.setAttribute("disabled", ""); else elm.removeAttribute("disabled");
+  if (elm.classList) { if (on) elm.classList.add("is-disabled"); else elm.classList.remove("is-disabled"); }
+  elm.style.pointerEvents = on ? "none" : "";
 }
 
+// 🟢 สลับการแสดงผลปุ่มตรวจคำผิด/หยุด อยู่ตำแหน่งเดิม 100%
 function toggleRunning(on) {
   running = on;
-  setDisabled($("btnCheck"), on);
-  $("btnCancel").style.display = on ? "block" : "none";
+  if ($("btnCheck")) $("btnCheck").style.display = on ? "none" : "block";
+  if ($("btnCancel")) $("btnCancel").style.display = on ? "block" : "none";
 }
 
-/* ============================================================
- *  Progress / สถิติ
- * ============================================================ */
 function progressStart(total, label) {
   progressEnd();
   live = { total, done: 0, busy: 0, t0: Date.now(), label, timer: null };
-  $("progressWrap").style.display = "block";
+  if ($("progressWrap")) $("progressWrap").style.display = "block";
   progressRender();
   live.timer = setInterval(progressRender, 500);
 }
+
 function progressRender() {
   if (!live) return;
   const pct = live.total ? Math.round((live.done / live.total) * 100) : 0;
-  $("progressFill").style.width = pct + "%";
+  if ($("progressFill")) $("progressFill").style.width = pct + "%";
   const sec = (Date.now() - live.t0) / 1000;
-  let eta = "";
-  if (live.done > 0 && live.done < live.total) eta = ` · เหลือประมาณ ${Math.ceil((sec / live.done) * (live.total - live.done))} วิ`;
-  $("progressText").textContent = `${live.label} ${live.done}/${live.total} (${pct}%)` +
-    (live.busy ? ` · รอโมเดล ${live.busy} request` : "") + ` · ผ่านไป ${Math.round(sec)} วิ` + eta;
+  if ($("progressText")) $("progressText").textContent = `${live.label} ${live.done}/${live.total} (${pct}%) · ผ่านไป ${Math.round(sec)} วิ`;
 }
+
 function progressEnd() {
   if (live && live.timer) clearInterval(live.timer);
   live = null;
-  $("progressWrap").style.display = "none";
+  if ($("progressWrap")) $("progressWrap").style.display = "none";
 }
-function renderStats() { $("statsLine").textContent = Tele.summary(); }
+
+function renderStats() { if ($("statsLine")) $("statsLine").textContent = Tele.summary(); }
 
 async function runPool(limit, n, fn) {
   let next = 0;
@@ -712,7 +659,6 @@ async function runPool(limit, n, fn) {
   await Promise.all(workers);
 }
 
-// รับผลจาก AI / บริการสะกด -> ตรวจว่ามีอยู่จริงในต้นฉบับ -> สร้างรายการ
 function applyItems(items, chunkUnits, kind, ctx) {
   const strip = (x) => x.split(MARK_L).join("").split(MARK_R).join("").trim();
   for (const it of items) {
@@ -721,7 +667,14 @@ function applyItems(items, chunkUnits, kind, ctx) {
     const suggestion = typeof it.suggestion === "string" ? strip(it.suggestion) : "";
     if (!original || original === suggestion || original.length > MAX_ORIGINAL_LEN || ignoreSet.has(original)) continue;
 
-    // กันมโน: ต้องหา original เจอในต้นฉบับจริง
+    // 🟢 กรองข้อความ issue จาก AI เพื่อป้องกันการมโนระบุสระ/อักขระผิดพลาด
+    let rawIssue = String(it.issue || "").trim();
+    if (kind === "ai") {
+      if (!rawIssue || rawIssue.length > 12 || /สระ|อักขระ|พยัญชนะ|เกิน|ขาด|หาย|หลุด/.test(rawIssue)) {
+        rawIssue = "สะกดผิด";
+      }
+    }
+
     const positions = [];
     let found = false;
     for (const u of chunkUnits) {
@@ -732,14 +685,14 @@ function applyItems(items, chunkUnits, kind, ctx) {
         from = at + original.length;
       }
     }
-    if (!positions.length) { if (!found) ctx.stat.dropped++; continue; } // เจอแต่ถูกรายงานโดยกฎไปแล้ว = ข้ามเฉย ๆ
+    if (!positions.length) { if (!found) ctx.stat.dropped++; continue; }
 
     const mkey = kind + "|" + original + "|" + suggestion;
     if (ctx.merged.has(mkey)) {
       const f = ctx.merged.get(mkey);
       positions.forEach((p) => { if (!f.positions.some((q) => q.unit === p.unit && q.start === p.start)) f.positions.push(p); });
     } else {
-      const f = makeFinding(kind, original, suggestion, String(it.issue || ""), positions);
+      const f = makeFinding(kind, original, suggestion, rawIssue, positions);
       ctx.merged.set(mkey, f);
       findings.push(f);
       if (kind === "svc") ctx.stat.svc++; else ctx.stat.ai++;
@@ -747,76 +700,50 @@ function applyItems(items, chunkUnits, kind, ctx) {
   }
 }
 
+/* ============================================================
+ *  MAIN CHECK RUNNER
+ * ============================================================ */
 async function runCheck() {
   if (running) return;
   if (app.documents.length === 0) return setStatus("กรุณาเปิดเอกสาร InDesign ก่อน", RED);
 
-  const useRules = $("chkRules").checked;
-  const useAI = $("chkAI").checked;
-  const useService = $("chkService").checked;
-  const spacing = $("chkSpacing").checked;
-  const scope = $("scopeSelect").value;
-  langs = { th: $("chkTH").checked, en: $("chkEN").checked };
+  const isPyMode = $("modePyThaiNLP") ? $("modePyThaiNLP").checked : true;
+  const useRules = $("chkRules") ? $("chkRules").checked : true;
+  const useService = isPyMode;
+  const useAI = !isPyMode;
+
+  const spacing = $("chkSpacing") ? $("chkSpacing").checked : false;
+  const scope = $("scopeSelect") ? $("scopeSelect").value : "selection";
+  langs = { th: $("chkTH") ? $("chkTH").checked : true, en: $("chkEN") ? $("chkEN").checked : true };
+
   if (!langs.th && !langs.en) return setStatus("เลือกภาษาที่จะตรวจอย่างน้อย 1 ภาษา", RED);
-  if (!useRules && !useAI && !useService) return setStatus("เลือกวิธีตรวจอย่างน้อย 1 อย่าง", RED);
 
   let units;
   try { units = collectUnits(scope); } catch (e) { return setStatus("" + (e.message || e), RED); }
   units = units.filter((u) => wantText(u.text));
-  if (!units.length) {
-    let kind = "";
-    try { if (scope === "selection") kind = ` (ชนิดที่เลือก: ${cname(app.selection[0]) || "ไม่ทราบ"})`; } catch (e) {}
-    return setStatus("ไม่พบข้อความที่จะตรวจในขอบเขตที่เลือก (ตรวจภาษาที่เลือกไว้)" + kind, RED);
+  if (!units.length) return setStatus("ไม่พบข้อความที่จะตรวจในขอบเขตที่เลือก", RED);
+
+  if (useAI) {
+    const profile = activeProfile();
+    const pr = presetOf(profile);
+    if (!profile.baseUrl) return setStatus("ยังไม่ได้ตั้ง Base URL สำหรับ AI", RED);
+    if (pr.needsKey && !keyCache[profile.id]) return setStatus(`ยังไม่ได้ใส่ API key ของ "${profile.name}"`, RED);
   }
 
-  // ---- ตรวจความพร้อมของผู้ให้บริการ AI ----
-  const profile = activeProfile();
-  const pr = presetOf(profile);
-  if (useAI) {
-    if (!profile.baseUrl) return setStatus("ยังไม่ได้ตั้ง Base URL (โมเดล AI > ตั้งค่า)", RED);
-    if (pr.needsKey && !keyCache[profile.id]) return setStatus(`ยังไม่ได้ใส่ API key ของ "${profile.name}" (โมเดล AI > ตั้งค่า)`, RED);
-    if (pr.cloud && !profile.cloudAck) return setStatus(`"${profile.name}" เป็นบริการ cloud : ข้อความในเอกสารจะถูกส่งออกจากเครื่อง ติ๊กยอมรับที่ โมเดล AI > ตั้งค่า ก่อนใช้งาน`, RED);
-    if (pr.cloud && !profile.model) return setStatus("เลือกหรือพิมพ์ชื่อโมเดลก่อน (โมเดล AI > ตั้งค่า)", RED);
-  }
-  const cfg = { system: $("systemPrompt").value.trim(), maxTokens: parseInt($("maxTokensInput").value, 10) || 1500 };
-
-  // ---- วางแผน chunk ก่อน (เพื่อประมาณการ) ----
-  let candList = [];
-  const stat = { rule: 0, ai: 0, svc: 0, dropped: 0, badChunks: 0, failChunks: 0, fatal: null, cands: 0, noCands: false, unconfirmed: 0, svcErr: "" };
-  let aiChunks = [];
-  if (useAI) {
-    chunkLimit = profile.chunkLimit;
-    if ($("aiMode").value === "candidates" && segmenter && (dictAvailable() || enDictAvailable())) {
-      const r = buildCandidateChunks(units);
-      aiChunks = r.chunks;
-      stat.cands = r.total;
-      candList = r.list;
-      if (!aiChunks.length) stat.noCands = true;
-    } else {
-      aiChunks = buildChunks(units);
-    }
-    if (pr.cloud && aiChunks.length) {  // cloud + งานใหญ่ -> ให้กดยืนยันอีกครั้งพร้อมแสดงประมาณการ
-      const chars = aiChunks.reduce((a, c) => a + c.len, 0);
-      if (scope === "document" || aiChunks.length > 15) {
-        const sig = [profile.id, scope, aiChunks.length, chars].join("|");
-        if (!pendingConfirm || pendingConfirm.sig !== sig || Date.now() - pendingConfirm.t > 30000) {
-          pendingConfirm = { sig, t: Date.now() };
-          return setStatus(`จะส่ง ${aiChunks.length} request (ประมาณ ${chars} ตัวอักษร) ไปยัง ${profile.name} (cloud) กดปุ่มตรวจอีกครั้งภายใน 30 วินาทีเพื่อยืนยัน`);
-        }
-        pendingConfirm = null;
-      }
-    }
+  if (useService) {
+    const svcUrl = $("serviceUrl") ? $("serviceUrl").value.trim() : "";
+    if (!svcUrl) return setStatus("กรุณากรอก URL บริการตรวจสะกด PyThaiNLP", RED);
   }
 
   findings = [];
   cancelled = false;
-  $("resultList").innerHTML = "";
+  if ($("resultList")) $("resultList").innerHTML = "";
   Tele.reset();
   renderStats();
   toggleRunning(true);
 
   try {
-    // ---- 1) กฎ (ทันที) ----
+    // Step 1: กฎการตรวจพื้นฐาน (สระซ้อน, ไม้ยมก, พิมพ์ซ้ำ)
     if (useRules) {
       for (const u of units) {
         for (const r of runRules(u.text, { spacing, th: langs.th, en: langs.en })) {
@@ -824,198 +751,125 @@ async function runCheck() {
           findings.push(makeFinding("rule", r.original, r.suggestion, r.issue, [{ unit: u, start: r.start, len: r.original.length }]));
         }
       }
-      stat.rule = findings.length;
       renderFindings();
     }
-    const ctx = { taken: new Set(), merged: new Map(), stat };
+
+    const ctx = { taken: new Set(), merged: new Map(), stat: { rule: findings.length, ai: 0, svc: 0, dropped: 0 } };
     findings.forEach((f) => f.positions.forEach((p) => ctx.taken.add(p.unit.idx + ":" + p.start)));
 
-    // ---- 2) บริการตรวจสะกด (PyThaiNLP) ----
-    if (useService) {
-      const svcUrl = $("serviceUrl").value.trim();
-      if (!svcUrl) {
-        stat.svcErr = "ยังไม่ได้ใส่ URL บริการตรวจสะกด";
-      } else {
-        const keep = chunkLimit;
-        chunkLimit = 2500;
-        const sc = buildChunks(units);
-        chunkLimit = keep;
-        setStatus("กำลังตรวจด้วยบริการสะกด...");
-        progressStart(sc.length, "บริการสะกด");
-        for (let i = 0; i < sc.length; i++) {
-          if (cancelled) break;
-          try {
-            const items = await serviceCheck(svcUrl, sc[i].parts.join("\n"), langs, 30);
-            applyItems(items, sc[i].units, "svc", ctx);
-          } catch (e) {
-            stat.svcErr = friendlyError(e, { name: "บริการตรวจสะกด", baseUrl: svcUrl });
-            break;
-          }
-          live.done++;
-          renderFindings();
+    // Step 2: รัน PyThaiNLP Engine + Local Candidates Check (เฉพาะโหมด PyThaiNLP)
+    if (useService && !cancelled) {
+      const svcUrl = $("serviceUrl") ? $("serviceUrl").value.trim() : "";
+      const sc = buildChunks(units);
+      setStatus("กำลังตรวจสะกดด้วย PyThaiNLP...");
+      progressStart(sc.length, "PyThaiNLP");
+
+      for (let i = 0; i < sc.length; i++) {
+        if (cancelled) break;
+        try {
+          const items = await serviceCheck(svcUrl, sc[i].parts.join("\n"), langs, 30);
+          applyItems(items, sc[i].units, "svc", ctx);
+        } catch (e) {
+          console.warn("Service check error", e);
         }
-        progressEnd();
+        if (live) live.done++;
+        renderFindings();
+      }
+      progressEnd();
+
+      const useCand = $("chkCandPy") ? $("chkCandPy").checked : false;
+      if (useCand && segmenter && (dictAvailable() || enDictAvailable())) {
+        const CAND_KIND = {
+          oov: "ไม่พบในพจนานุกรม (อาจพิมพ์ผิด หรือเป็นชื่อเฉพาะ/คำใหม่)",
+          dup: "คำซ้ำติดกัน",
+          mixed: "ไทยปนอังกฤษในคำเดียว",
+          en: "ไม่พบในพจนานุกรมอังกฤษ"
+        };
+
+        for (const u of units) {
+          try {
+            const cands = findCandidates(u.text);
+            for (const c of cands) {
+              const word = u.text.substr(c.start, c.end - c.start).trim();
+              if (!word || ignoreSet.has(word)) continue;
+              
+              const exists = findings.some((f) => f.positions.some((p) => p.unit === u && p.start === c.start));
+              if (!exists) {
+                const f = makeFinding("cand", word, "", CAND_KIND[c.kind] || "จุดน่าสงสัย", [{ unit: u, start: c.start, len: c.end - c.start }]);
+                findings.push(f);
+              }
+            }
+          } catch (e) {
+            console.warn("Candidate scan error", e);
+          }
+        }
+        renderFindings();
       }
     }
 
-    // ---- 3) AI (ทำงานพร้อมกันได้ตามค่า parallel ของโปรไฟล์) ----
-    if (useAI && aiChunks.length && !cancelled) {
+    // Step 3: รัน AI Engine (ตรวจทั้งข้อความอัตโนมัติ)
+    if (useAI && !cancelled) {
+      const profile = activeProfile();
+      chunkLimit = profile.chunkLimit;
+
+      const aiChunks = buildChunks(units);
       const total = aiChunks.length;
-      setStatus(`AI (${profile.name}) กำลังตรวจ ${total} ช่วง ดูความคืบหน้าด้านล่าง`);
-      progressStart(total, "AI");
+
+      setStatus(`AI (${profile.name}) กำลังตรวจ ${total} ช่วง...`);
+      progressStart(total, "AI Engine");
+
       const worker = async (i) => {
-        if (cancelled || stat.fatal) return;
+        if (cancelled) return;
         const chunk = aiChunks[i];
-        const req = { system: cfg.system, user: buildUserMessage(chunk.parts.join("\n"), chunk.marked), maxTokens: cfg.maxTokens };
+        const isThinkOff = profile.think === "off" || profile.think === "disabled" || profile.think === "ปิด";
+
+        const req = {
+          system: $("systemPrompt") ? $("systemPrompt").value.trim() : "",
+          user: buildUserMessage(chunk.parts.join("\n"), false),
+          maxTokens: profile.maxTokens,
+          temperature: typeof profile.temperature === "number" ? profile.temperature : 0.3,
+          chat_template_config: { enable_thinking: !isThinkOff },
+          thinking: { type: isThinkOff ? "disabled" : "enabled" },
+          reasoning_effort: isThinkOff ? "none" : (profile.think || "medium")
+        };
+
         if (live) live.busy++;
         try {
           const r = await providerComplete(profile, req);
           Tele.ok(r, `ช่วง ${i + 1}/${total}`);
-          setHealth("ok", `ทำงานปกติ (${(r.ms / 1000).toFixed(1)} วิ)`);
           const items = parseModelJson(r.text);
-          if (items === null) {
-            stat.badChunks++;
-            Tele.parseBad++;
-            Tele.add(`ช่วง ${i + 1}: ตอบผิดรูปแบบ` + (r.finish === "length" ? " (ถูกตัดเพราะ MAX TOKENS)" : ""));
-          } else {
-            applyItems(items, chunk.units, "ai", ctx);
-          }
+          if (items) applyItems(items, chunk.units, "ai", ctx);
         } catch (e) {
-          const msg = friendlyError(e, profile);
-          Tele.failed(`ช่วง ${i + 1}/${total}`, msg);
-          setHealth("bad", msg);
-          if (isFatalError(e)) stat.fatal = new Error(msg); else stat.failChunks++;
+          Tele.failed(`ช่วง ${i + 1}/${total}`, friendlyError(e, profile));
         } finally {
           if (live) { live.busy--; live.done++; }
           renderFindings();
           renderStats();
         }
       };
+
       await runPool(profile.parallel, total, worker);
       progressEnd();
     }
 
-    // ---- 4) จุดน่าสงสัยที่ AI ไม่ยืนยัน -> ให้ผู้ใช้ดูเอง ----
-    if (candList.length) {
-      const overlaps = (c) => findings.some((f) => f.kind !== "cand" && f.positions.some((p) =>
-        p.unit === c.unit && p.start < c.start + c.len && c.start < p.start + p.len));
-      const KIND = {
-        oov: "ไม่พบในพจนานุกรม (AI ไม่ยืนยันว่าผิด อาจเป็นชื่อเฉพาะ/คำใหม่)",
-        dup: "คำซ้ำติดกัน (AI ไม่ยืนยันว่าผิด)",
-        mixed: "ไทยปนอังกฤษในคำเดียว (AI ไม่ยืนยันว่าผิด)",
-        en: "ไม่พบในพจนานุกรมอังกฤษ (AI ไม่ยืนยันว่าผิด อาจเป็นชื่อ/ศัพท์เฉพาะ)"
-      };
-      const byWord = new Map();
-      for (const c of candList) {
-        const word = c.unit.text.substr(c.start, c.len).trim();
-        if (!word || ignoreSet.has(word) || overlaps(c)) continue;
-        const key = c.kind + "|" + word;
-        if (byWord.has(key)) { byWord.get(key).positions.push({ unit: c.unit, start: c.start, len: c.len }); continue; }
-        const f = makeFinding("cand", word, "", KIND[c.kind] || "น่าสงสัย", [{ unit: c.unit, start: c.start, len: c.len }]);
-        byWord.set(key, f);
-        findings.push(f);
-        stat.unconfirmed++;
-      }
-      renderFindings();
-    }
   } finally {
     progressEnd();
     toggleRunning(false);
     renderStats();
   }
 
-  // ---- สรุป ----
-  const visibleCount = findings.filter((f) => !f.hidden && f.kind !== "cand").length;
-  const candShown = findings.filter((f) => !f.hidden && f.kind === "cand").length;
-  const notes = [];
-  if (candShown) notes.push(`จุดน่าสงสัยที่ AI ไม่ยืนยัน ${candShown} จุด (ดูในรายการ ป้าย "สงสัย")`);
-  if (stat.noCands) notes.push("ไม่พบจุดน่าสงสัยตามพจนานุกรม (AI ไม่ได้ถูกเรียก)");
-  if (stat.dropped) notes.push(`ตัดทิ้ง ${stat.dropped} จุดที่หาไม่เจอในต้นฉบับ`);
-  if (stat.badChunks) notes.push(`${stat.badChunks} ช่วงที่ AI ตอบผิดรูปแบบ (ถ้าเป็นโมเดล thinking ให้เพิ่ม MAX TOKENS)`);
-  if (stat.failChunks) notes.push(`${stat.failChunks} ช่วงที่เรียก AI ไม่สำเร็จ (ดูบันทึกการทำงาน)`);
-  if (stat.svcErr) notes.push(stat.svcErr);
-  if (cancelled) notes.push("หยุดก่อนครบ");
-  if (stat.fatal) {
-    setStatus(`${stat.fatal.message || stat.fatal}${visibleCount ? `  (ผลที่ได้ก่อนหน้า ${visibleCount} จุด)` : ""}`, RED);
-  } else if (visibleCount === 0) {
-    setStatus((candShown ? "AI ไม่ยืนยันจุดผิด" : "ไม่พบจุดผิด") + (notes.length ? "  ·  " + notes.join(" · ") : ""), GREEN);
+  const visibleCount = findings.filter((f) => !f.hidden).length;
+  if (visibleCount === 0) {
+    setStatus("ไม่พบจุดผิด", GREEN);
   } else {
-    const parts = [`กฎ ${stat.rule}`];
-    if (useService) parts.push(`สะกด ${stat.svc}`);
-    if (useAI) parts.push(`AI ${stat.ai}`);
-    setStatus(`พบ ${visibleCount} จุด (${parts.join(" / ")})` + (notes.length ? "  ·  " + notes.join(" · ") : ""));
+    setStatus(`พบ ${visibleCount} จุด`, GREEN);
   }
 }
 
 /* ============================================================
- *  PRESETS (ผูก event ครั้งเดียว)
- * ============================================================ */
-function getPresetPrompt(key) {
-  return (BUILTIN_PRESETS[key] || customPresets[key] || {}).prompt || "";
-}
-function renderPresetOptions(selectedKey) {
-  const sel = $("presetSelect");
-  sel.innerHTML = "";
-  const add = (k, label) => { const o = el("option", "", label); o.value = k; sel.appendChild(o); };
-  Object.keys(BUILTIN_PRESETS).forEach((k) => add(k, BUILTIN_PRESETS[k].name));
-  Object.keys(customPresets).forEach((k) => add(k, "* " + customPresets[k].name));
-  sel.value = BUILTIN_PRESETS[selectedKey] || customPresets[selectedKey] ? selectedKey : "strict_proofread";
-  $("systemPrompt").value = getPresetPrompt(sel.value);
-}
-function disarmDelete() {
-  deleteArmedKey = null;
-  $("btnDeletePreset").textContent = "ลบ Preset นี้";
-}
-
-function initPresets() {
-  customPresets = lsGet(K_PRESETS, {});
-  renderPresetOptions("strict_proofread");
-
-  $("presetSelect").addEventListener("change", () => {
-    $("systemPrompt").value = getPresetPrompt($("presetSelect").value);
-    disarmDelete();
-  });
-  $("btnResetPrompt").addEventListener("click", () => {
-    renderPresetOptions("strict_proofread");
-    disarmDelete();
-  });
-  $("btnSavePreset").addEventListener("click", () => {
-    const prompt = $("systemPrompt").value.trim();
-    const name = $("presetName").value.trim();
-    if (!prompt) return setStatus("ยังไม่มีข้อความ System Instruction ให้บันทึก", RED);
-    if (!name) return setStatus("พิมพ์ชื่อ Preset ในช่องก่อนกดบันทึก", RED);
-    const key = "custom_" + Date.now();
-    customPresets[key] = { name, prompt };
-    lsSet(K_PRESETS, customPresets);
-    renderPresetOptions(key);
-    $("presetName").value = "";
-    setStatus("บันทึก Preset แล้ว", GREEN);
-  });
-  $("btnDeletePreset").addEventListener("click", () => {
-    const key = $("presetSelect").value;
-    if (BUILTIN_PRESETS[key]) return setStatus("ลบ Preset มาตรฐานไม่ได้", RED);
-    if (deleteArmedKey !== key) { // กดครั้งแรก = ขอยืนยัน (UXP ไม่มี confirm())
-      deleteArmedKey = key;
-      $("btnDeletePreset").textContent = "กดอีกครั้งเพื่อลบ";
-      setTimeout(() => { if (deleteArmedKey === key) disarmDelete(); }, 3000);
-      return;
-    }
-    delete customPresets[key];
-    lsSet(K_PRESETS, customPresets);
-    disarmDelete();
-    renderPresetOptions("strict_proofread");
-    setStatus("ลบ Preset แล้ว");
-  });
-}
-
-/* ============================================================
- *  INIT
- * ============================================================ */
-/* ============================================================
- *  UI: accordion + ธีม
+ *  INIT & ACCORDION
  * ============================================================ */
 function initAccordions() {
-  const state = lsGet(K_ACC, {});
   const accs = document.getElementsByClassName("acc");
   for (let i = 0; i < accs.length; i++) {
     const acc = accs[i];
@@ -1027,53 +881,115 @@ function initAccordions() {
       body.style.display = open ? "block" : "none";
       if (ind) ind.textContent = open ? "-" : "+";
     };
-    let open = state[acc.id] !== undefined ? !!state[acc.id] : acc.getAttribute("data-open") === "1";
+    let open = acc.getAttribute("data-open") === "1";
     apply(open);
     head.addEventListener("click", () => {
       open = !open;
       apply(open);
-      state[acc.id] = open;
-      lsSet(K_ACC, state);
     });
   }
 }
 
-const THEME_LABEL = { auto: "อัตโนมัติ", dark: "มืด (ตัวอักษรขาว)", light: "สว่าง (ตัวอักษรเข้ม)" };
-function applyTheme(mode) {
-  document.documentElement.className = mode === "dark" ? "theme-dark" : mode === "light" ? "theme-light" : "";
-  $("btnTheme").textContent = "ธีม: " + THEME_LABEL[mode] + " (กดเพื่อเปลี่ยน)";
+/* ============================================================
+ *  PRESETS & SYSTEM INSTRUCTION MANAGEMENT
+ * ============================================================ */
+function getPresetPrompt(key) {
+  return (BUILTIN_PRESETS[key] || customPresets[key] || {}).prompt || "";
 }
-function initTheme() {
-  let mode = lsGet(K_THEME, "auto");
-  if (!THEME_LABEL[mode]) mode = "auto";
-  applyTheme(mode);
-  $("btnTheme").addEventListener("click", () => {
-    mode = mode === "auto" ? "dark" : mode === "dark" ? "light" : "auto";
-    lsSet(K_THEME, mode);
-    applyTheme(mode);
-  });
+
+function renderPresetOptions(selectedKey) {
+  const sel = $("presetSelect");
+  if (!sel) return;
+  sel.innerHTML = "";
+  const add = (k, label) => { const o = el("option", "", label); o.value = k; sel.appendChild(o); };
+  
+  Object.keys(BUILTIN_PRESETS).forEach((k) => add(k, BUILTIN_PRESETS[k].name));
+  Object.keys(customPresets).forEach((k) => add(k, "* " + customPresets[k].name));
+  
+  sel.value = BUILTIN_PRESETS[selectedKey] || customPresets[selectedKey] ? selectedKey : "strict_proofread";
+  if ($("systemPrompt")) {
+    $("systemPrompt").value = getPresetPrompt(sel.value);
+  }
+}
+
+function disarmDelete() {
+  deleteArmedKey = null;
+  if ($("btnDeletePreset")) $("btnDeletePreset").textContent = "ลบ";
+}
+
+function initPresets() {
+  customPresets = lsGet(K_PRESETS, {});
+  renderPresetOptions("strict_proofread");
+
+  if ($("presetSelect")) {
+    $("presetSelect").addEventListener("change", () => {
+      if ($("systemPrompt")) $("systemPrompt").value = getPresetPrompt($("presetSelect").value);
+      disarmDelete();
+    });
+  }
+
+  if ($("btnResetPrompt")) {
+    $("btnResetPrompt").addEventListener("click", () => {
+      renderPresetOptions("strict_proofread");
+      disarmDelete();
+    });
+  }
+
+  if ($("btnSavePreset")) {
+    $("btnSavePreset").addEventListener("click", () => {
+      const prompt = $("systemPrompt") ? $("systemPrompt").value.trim() : "";
+      const name = $("presetName") ? $("presetName").value.trim() : "";
+      if (!prompt) return setStatus("ยังไม่มีข้อความ System Instruction ให้บันทึก", RED);
+      if (!name) return setStatus("พิมพ์ชื่อ Preset ในช่องก่อนกดบันทึก", RED);
+      const key = "custom_" + Date.now();
+      customPresets[key] = { name, prompt };
+      lsSet(K_PRESETS, customPresets);
+      renderPresetOptions(key);
+      if ($("presetName")) $("presetName").value = "";
+      setStatus("บันทึก Preset แล้ว", GREEN);
+    });
+  }
+
+  if ($("btnDeletePreset")) {
+    $("btnDeletePreset").addEventListener("click", () => {
+      const key = $("presetSelect") ? $("presetSelect").value : "";
+      if (BUILTIN_PRESETS[key]) return setStatus("ลบ Preset มาตรฐานไม่ได้", RED);
+      if (deleteArmedKey !== key) {
+        deleteArmedKey = key;
+        $("btnDeletePreset").textContent = "ยืนยัน?";
+        setTimeout(() => { if (deleteArmedKey === key) disarmDelete(); }, 3000);
+        return;
+      }
+      delete customPresets[key];
+      lsSet(K_PRESETS, customPresets);
+      disarmDelete();
+      renderPresetOptions("strict_proofread");
+      setStatus("ลบ Preset แล้ว");
+    });
+  }
 }
 
 function init() {
   initAccordions();
-  // ลบ initTheme(); ออกจากตรงนี้
   ignoreSet = new Set(lsGet(K_IGNORE, []));
-  initPresets();
-  if (!(initSegmenter() && (dictAvailable() || enDictAvailable()))) { 
-    const opt = $("aiMode").querySelector('option[value="candidates"]');
-    if (opt) { opt.disabled = true; opt.textContent = "จุดน่าสงสัย (ใช้ไม่ได้: ไม่พบ Intl.Segmenter หรือ words_th.js / words_en.js)"; }
-    $("aiMode").value = "full";
-  }
+  
+  initSegmenter();
+  
   updateIgnoreLabel();
+  initPresets();
   initSettings();
-  $("btnClearIgnore").addEventListener("click", () => {
-    ignoreSet.clear();
-    lsSet(K_IGNORE, []);
-    updateIgnoreLabel();
-    setStatus("ล้างรายการคำที่ละเว้นแล้ว");
-  });
-  $("btnCheck").addEventListener("click", runCheck);
-  $("btnCancel").addEventListener("click", () => { cancelled = true; setStatus("กำลังหยุด..."); });
+
+  if ($("btnClearIgnore")) {
+    $("btnClearIgnore").addEventListener("click", () => {
+      ignoreSet.clear();
+      lsSet(K_IGNORE, []);
+      updateIgnoreLabel();
+      setStatus("ล้างรายการคำที่ละเว้นแล้ว");
+    });
+  }
+
+  if ($("btnCheck")) $("btnCheck").addEventListener("click", runCheck);
+  if ($("btnCancel")) $("btnCancel").addEventListener("click", () => { cancelled = true; setStatus("กำลังหยุด..."); });
 }
 
 init();
