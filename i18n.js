@@ -285,7 +285,7 @@ const I18N = {
     "rules.spacing": "Check spacing around mai yamok (ๆ) and double spaces",
     "rules.cand": "Flag suspicious words using the local dictionary (words not in the dictionary)",
     "scope.label": "Check scope",
-    "scope.sel": "Selection (frame / text / table)",
+    "scope.sel": "Selection (Text Frame / Text Selection / Table)",
     "scope.page": "Current page",
     "scope.doc": "Entire document",
     "scope.langLbl": "Languages to check",

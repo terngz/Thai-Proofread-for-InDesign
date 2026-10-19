@@ -11,10 +11,10 @@
       --bd: #454545;
       --fg: #EDEDED;
       --fg2: #A6A6A6;
-      --accent: #5AA2FF;
-      --accent-bg: #2E7BEA;
-      --accent-soft: rgba(90, 162, 255, 0.16);
-      --err: #FF7A70;
+      --accent: #27ADF5;
+      --accent-bg: #1769E0;
+      --accent-soft: rgb(13, 102, 208);
+      --err: #db3529;
       --ok: #5DDC8F;
       --input-bg: #1F1F1F;
       --input-fg: #FFFFFF;
@@ -149,10 +149,9 @@
     }
 
     button.btn-kofi {
-      width: 100%;
-      color: #FFFFFF !important;
-      background-color: #3157E0 !important;
-      border-color: #3157E0 !important;
+      flex-basis: auto;
+      min-width: auto;
+      color: #FFFFFF;
       font-weight: 700;
     }
 
@@ -215,21 +214,24 @@
     .seg-group {
       display: flex;
       flex-direction: row;
-      padding: 3px;
-      border: 1px solid var(--bd);
-      border-radius: 8px;
+      padding: 5px;
+      border-radius: 10px;
       background-color: var(--bg);
     }
 
     .seg {
       flex: 1;
-      padding: 6px 8px;
-      border-radius: 6px;
+      padding: 8px 8px;
+      border-radius: 7px;
       text-align: center;
-      font-size: 12px;
+      font-size: 13px;
       color: var(--fg2);
       cursor: pointer;
       user-select: none;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      text-align: center !important;
     }
 
     .seg:hover {
@@ -238,7 +240,7 @@
 
     .seg.active {
       background-color: var(--accent-soft);
-      color: var(--accent);
+      color: var(--fg);
       font-weight: 700;
     }
 
@@ -295,8 +297,7 @@
       box-sizing: border-box;
       color: var(--input-fg) !important;
       background-color: var(--input-bg) !important;
-      border: 1px solid var(--bd) !important;
-      border-radius: 6px;
+      border: 0px solid var(--bd) !important;
     }
 
     select option {
@@ -318,9 +319,8 @@
       display: flex;
       flex-direction: row;
       align-items: center;
-      margin: 0 0 8px 0;
+      margin: 0 0 0px 0;
       font-size: 12px;
-      color: var(--fg) !important;
       cursor: pointer;
     }
 
@@ -330,7 +330,7 @@
 
     .chk span {
       margin-left: 6px;
-      line-height: 1.4;
+      line-height: 1.5;
       color: var(--fg) !important;
     }
 
@@ -377,7 +377,7 @@
 
     .btn,
     button {
-      height: 28px;
+      height: 22px;
       margin: 0;
       padding: 0 12px;
       box-sizing: border-box;
@@ -387,10 +387,7 @@
       justify-content: center;
       white-space: nowrap;
       font-size: 12px;
-      color: var(--fg) !important;
-      background-color: var(--surface-hi) !important;
-      border: 1px solid var(--bd) !important;
-      border-radius: 6px;
+      border-radius: 0;
       cursor: pointer;
     }
 
@@ -398,15 +395,8 @@
       border-color: var(--accent) !important;
     }
 
-    button.btn-accent {
-      color: #FFFFFF !important;
-      background-color: var(--accent-bg) !important;
-      border-color: var(--accent-bg) !important;
-      font-weight: 700;
-    }
-
     button.btn-text {
-      height: 24px;
+      height: 22px;
       padding: 0 8px;
       font-size: 11px;
       color: var(--fg2) !important;
@@ -416,7 +406,6 @@
 
     button.btn-text:hover {
       color: var(--accent) !important;
-      border-color: transparent !important;
     }
 
     button.btn-danger {
@@ -424,16 +413,22 @@
     }
 
     .btn-line {
-      display: flex;
-      flex-direction: row;
-      margin: 8px 0 0 0;
+      display: flex !important;
+      flex-direction: row !important;
+      flex-wrap: wrap !important;
+      margin-top: 10px !important;
+      margin-left: -4px !important;
+      margin-right: -4px !important;
     }
 
     .btn-line button {
-      flex: 1;
-      margin-right: 8px;
-      padding: 0 4px;
-      font-size: 11px;
+      flex-basis: auto !important;
+      min-width: auto !important;
+      height: 22px !important;
+      margin: 4px !important;
+      /* ใส่ margin ล็อกระยะห่างรอบทิศทาง 4px ชัวร์ 100% */
+      padding: 0 12px !important;
+      font-size: 11px !important;
     }
 
     .btn-line button:last-child {
@@ -677,7 +672,7 @@
 
     .lang-btn.active {
       background-color: var(--accent-soft);
-      color: var(--accent);
+      color: var(--fg);
     }
 
     .footer {
@@ -711,11 +706,14 @@
 
     <div id="aboutBox" class="subpanel" style="display: none;">
       <div class="help-title">Thai AI Proofreader</div>
-      <div data-i18n="about.desc">Thai and English proofreading plugin for Adobe InDesign, powered by PyThaiNLP and AI engines</div>
+      <div data-i18n="about.desc">Thai and English proofreading plugin for Adobe InDesign, powered by PyThaiNLP and AI
+        engines</div>
       <div><span data-i18n="about.ver">Version</span> <span id="aboutVersion"></span></div>
-      <div><span id="btnOpenChangelog" class="link" style="display: none;" data-i18n="about.new">What's new in v{version} ↗</span></div>
+      <div><span id="btnOpenChangelog" class="link" style="display: none;" data-i18n="about.new">What's new in
+          v{version} ↗</span></div>
       <div>©2026 Konnext Group. All rights reserved.</div>
-      <div class="about-foot"><button id="btnKofi" class="btn-kofi" data-i18n="about.kofi">Support me on Ko-fi</button></div>
+      <div class="about-foot"><button id="btnKofi" class="btn-kofi" data-i18n="about.kofi">Support me on Ko-fi</button>
+      </div>
     </div>
 
     <div id="helpBox" class="subpanel" style="display: none;">
@@ -723,8 +721,10 @@
       <div class="help-scroll">
         <div style="margin-bottom: 6px;">
           <div><b data-i18n="help.s1">1. Choose the main checker</b></div>
-          <div style="padding-left: 16px;" data-i18n="help.s1a">PyThaiNLP: fast offline spell check (requires spellcheck_server.py)</div>
-          <div style="padding-left: 16px;" data-i18n="help.s1b">AI Engine: context-aware check (LM Studio / Ollama / Cloud API)</div>
+          <div style="padding-left: 16px;" data-i18n="help.s1a">PyThaiNLP: fast offline spell check (requires
+            spellcheck_server.py)</div>
+          <div style="padding-left: 16px;" data-i18n="help.s1b">AI Engine: context-aware check (LM Studio / Ollama /
+            Cloud API)</div>
         </div>
 
         <div style="margin-bottom: 6px;">
@@ -734,12 +734,14 @@
 
         <div style="margin-bottom: 6px;">
           <div><b data-i18n="help.s3">3. Handle the results</b></div>
-          <div style="padding-left: 16px;" data-i18n="help.s3a">Press "Go to" to select the word in InDesign, or "Fix" to correct it right away</div>
+          <div style="padding-left: 16px;" data-i18n="help.s3a">Press "Go to" to select the word in InDesign, or "Fix"
+            to correct it right away</div>
         </div>
 
         <div style="margin-top: 14px;">
           <div><b data-i18n="help.s4">Requirements</b></div>
-          <div style="padding-left: 16px;" data-i18n="help.s4a">Python 3.9+ for PyThaiNLP mode, or an active API key / local server for AI mode.</div>
+          <div style="padding-left: 16px;" data-i18n="help.s4a">Python 3.9+ for PyThaiNLP mode, or an active API key /
+            local server for AI mode.</div>
         </div>
       </div>
       <div class="help-foot" style="margin-top: 10px;">
@@ -772,13 +774,17 @@
             <div id="serviceHelp" class="subpanel" style="display: none;">
               <div class="help-title" data-i18n="svc.h.title">How to install and run the spell-check service</div>
               <div data-i18n="svc.h.1">1. Install Python 3.9 or later (download from python.org)</div>
-              <div data-i18n="svc.h.2">2. Open PowerShell (Windows) or Terminal (Mac) and install the packages (one time only):</div>
+              <div data-i18n="svc.h.2">2. Open PowerShell (Windows) or Terminal (Mac) and install the packages (one time
+                only):</div>
               <div class="code">pip install pythainlp pyspellchecker</div>
-              <div data-i18n="svc.h.3">3. Run the service using the full path of the saved spellcheck_server.py (you can drag the file into the window):</div>
+              <div data-i18n="svc.h.3">3. Run the service using the full path of the saved spellcheck_server.py (you can
+                drag the file into the window):</div>
               <div class="code">python "C:\{your save path}\spellcheck_server.py"</div>
-              <div data-i18n="svc.h.4">4. When you see "spellcheck service on http://127.0.0.1:8765" it is ready. Keep that window open while you work.</div>
+              <div data-i18n="svc.h.4">4. When you see "spellcheck service on http://127.0.0.1:8765" it is ready. Keep
+                that window open while you work.</div>
               <div data-i18n="svc.h.5">5. Come back and press "Test"</div>
-              <div class="issue" data-i18n="svc.h.note">To change the port: python spellcheck_server.py --port 9000, then update the URL to match. See README.md for details.</div>
+              <div class="issue" data-i18n="svc.h.note">To change the port: python spellcheck_server.py --port 9000,
+                then update the URL to match. See README.md for details.</div>
             </div>
             <div class="inline-row">
               <input type="text" id="serviceUrl" value="http://127.0.0.1:8765">
@@ -798,11 +804,13 @@
             <div class="acc-body">
               <div class="field row">
                 <div style="flex: 1;">
-                  <div class="lbl"><span data-i18n="mdl.profile">Profile</span><span id="btnConnSettings" class="link" data-i18n="mdl.settings">Settings</span></div>
+                  <div class="lbl"><span data-i18n="mdl.profile">Profile</span><span id="btnConnSettings" class="link"
+                      data-i18n="mdl.settings">Settings</span></div>
                   <select id="profileSelect"></select>
                 </div>
                 <div style="flex: 1;">
-                  <div class="lbl"><span data-i18n="mdl.model">Model</span><span id="btnRefreshModels" class="link" data-i18n="mdl.refresh">Refresh</span></div>
+                  <div class="lbl"><span data-i18n="mdl.model">Model</span><span id="btnRefreshModels" class="link"
+                      data-i18n="mdl.refresh">Refresh</span></div>
                   <select id="modelSelect">
                     <option value="" data-i18n="mdl.connecting">Connecting...</option>
                   </select>
@@ -811,6 +819,12 @@
               <div id="modelInfo"></div>
 
               <div id="connPanel" class="subpanel" style="display: none; margin: 12px 0 0 0;">
+
+                <div class="btn-line" style="margin-top: 0; margin-bottom: 12px;">
+                  <button id="btnConnNew" data-i18n="conn.new">Add new profile</button>
+                  <button id="btnConnDelete" class="btn-danger" data-i18n="conn.delete">Delete profile</button>
+                </div>
+
                 <div class="field">
                   <div class="lbl"><span data-i18n="conn.provider">Provider</span></div>
                   <select id="connPreset"></select>
@@ -824,9 +838,10 @@
                   <input type="text" id="connUrl">
                 </div>
                 <div class="field">
-                  <div class="lbl"><span id="connKeyLabel">API KEY</span><span id="btnConnClearKey"
-                      class="link" data-i18n="conn.clearKey">Remove key</span></div>
-                  <input type="password" id="connKey" placeholder="Paste your API key here" data-i18n-placeholder="conn.keyPh">
+                  <div class="lbl"><span id="connKeyLabel">API KEY</span><span id="btnConnClearKey" class="link"
+                      data-i18n="conn.clearKey">Remove key</span></div>
+                  <input type="password" id="connKey" placeholder="Paste your API key here"
+                    data-i18n-placeholder="conn.keyPh">
                   <div id="connKeyNote" class="issue"></div>
                 </div>
                 <div class="field">
@@ -885,31 +900,32 @@
                 <div id="connCloudRow" style="display: none;">
                   <label class="chk">
                     <input type="checkbox" id="connCloudAck">
-                    <span data-i18n="conn.cloudAck">I understand that document text will be sent from this computer to this provider</span>
+                    <span data-i18n="conn.cloudAck">I understand that document text will be sent from this computer to
+                      this provider</span>
                   </label>
                 </div>
                 <div class="btn-line">
-                  <button id="btnConnSave" class="btn-accent" data-i18n="btn.save">Save</button>
+                  <button id="btnConnSave" data-i18n="btn.save">Save</button>
                   <button id="btnConnTest" data-i18n="conn.test">Test connection</button>
                   <button id="btnSelfTest" data-i18n="conn.selfTest">Test model</button>
                 </div>
-                <div class="btn-line">
-                  <button id="btnConnNew" data-i18n="conn.new">Add new profile</button>
-                  <button id="btnConnDelete" class="btn-danger" data-i18n="conn.delete">Delete profile</button>
-                </div>
+
                 <div id="connResult"></div>
               </div>
             </div>
           </div>
 
           <div class="acc" id="accPrompt" data-open="0">
-            <div class="acc-head"><span data-i18n="sec.prompt">AI instruction (System Instruction)</span><span class="acc-ind">+</span></div>
+            <div class="acc-head"><span data-i18n="sec.prompt">AI instruction (System Instruction)</span><span
+                class="acc-ind">+</span></div>
             <div class="acc-body">
               <div class="field">
-                <div class="lbl"><span>PRESET</span><span id="btnResetPrompt" class="link" data-i18n="pre.reset">Restore default</span></div>
+                <div class="lbl"><span>PRESET</span><span id="btnResetPrompt" class="link" data-i18n="pre.reset">Restore
+                    default</span></div>
                 <select id="presetSelect"></select>
                 <div class="preset-row">
-                  <input type="text" id="presetName" placeholder="New preset name..." data-i18n-placeholder="pre.namePh">
+                  <input type="text" id="presetName" placeholder="New preset name..."
+                    data-i18n-placeholder="pre.namePh">
                   <button id="btnSavePreset" data-i18n="btn.save">Save</button>
                   <button id="btnDeletePreset" data-i18n="btn.delete">Delete</button>
                 </div>
@@ -938,7 +954,8 @@
         </label>
         <label class="chk" id="chkCandPyRow">
           <input type="checkbox" id="chkCandPy">
-          <span data-i18n="rules.cand">Flag suspicious words using the local dictionary (words not in the dictionary)</span>
+          <span data-i18n="rules.cand">Flag suspicious words using the local dictionary (words not in the
+            dictionary)</span>
         </label>
       </div>
     </div>
@@ -979,7 +996,8 @@
     <div id="resultList"></div>
 
     <div class="acc" id="accLog" data-open="0">
-      <div class="acc-head"><span data-i18n="sec.log">Activity log (tokens / speed)</span><span class="acc-ind">+</span></div>
+      <div class="acc-head"><span data-i18n="sec.log">Activity log (tokens / speed)</span><span class="acc-ind">+</span>
+      </div>
       <div class="acc-body">
         <textarea id="logBox" readonly></textarea>
         <div class="btn-line"><button id="btnClearLog" data-i18n="log.clear">Clear log</button></div>
