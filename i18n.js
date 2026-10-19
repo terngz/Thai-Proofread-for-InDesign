@@ -1,12 +1,4 @@
-/* =========================================================
- *  i18n.js : ภาษาของหน้าจอ (ไทย / English)
- *  - tr("key", {var}) ดึงข้อความตามภาษาปัจจุบัน
- *  - ใส่ data-i18n="key" ใน HTML เพื่อให้ applyI18n() เปลี่ยนข้อความให้
- *  - เพิ่มภาษาใหม่: เพิ่ม object ใน I18N แล้วเพิ่มปุ่มใน index.html
- * ========================================================= */
 "use strict";
-
-const K_UI_LANG = "ai_proofread_ui_lang";
 
 const I18N = {
   th: {
@@ -21,6 +13,8 @@ const I18N = {
     "help.s2a": "เลือกขอบเขตข้อความ แล้วกด \"ตรวจคำผิด\"",
     "help.s3": "3. จัดการผลการตรวจ",
     "help.s3a": "กด \"ไปที่จุดนี้\" เพื่อเลือกคำใน InDesign หรือ \"แก้เลย\" เพื่อแก้ทันที",
+    "help.s4": "จำเป็นต้องติดตั้งและมี",
+    "help.s4a": "Python 3.9+ สำหรับการตรวจคำสะกดด้วย PyThaiNLP, หรือ ต้องมี บริการ API หรือ Local AI สำหรับบริการตรวจด้วย AI",
     "help.gh": "เปิดคู่มือฉบับเต็มบน GitHub ↗",
     "sec.engine": "เครื่องมือตรวจหลัก",
     "sec.rules": "ตัวเลือกกฎการตรวจ",
@@ -224,11 +218,8 @@ const I18N = {
     "sum.main": "{req} request · in {inTok} / out {outTok} tok · เฉลี่ย {tps} tok/s · {s} วิ/request",
     "sum.fail": " · ล้มเหลว {n}",
     "sum.parse": " · ตอบผิดรูปแบบ {n}",
-    "about.new": "มีอะไรใหม่ใน v{version}",
-    "about.fullLog": "ดูประวัติการเปลี่ยนแปลงทั้งหมด ↗",
-    "cl.new": "ใหม่",
-    "cl.better": "ปรับปรุง",
-    "cl.fixed": "แก้ไข"
+    "about.new": "มีอะไรใหม่ใน v{version} ↗",
+    "about.kofi": "สนับสนุนผู้พัฒนาบน Ko-fi"
   },
   en: {
     "hdr.sub": "Thai / English proofreading",
@@ -242,6 +233,8 @@ const I18N = {
     "help.s2a": "Choose the scope, then press \"Check\"",
     "help.s3": "3. Handle the results",
     "help.s3a": "Press \"Go to\" to select the word in InDesign, or \"Fix\" to correct it right away",
+    "help.s4": "Requirements",
+    "help.s4a": "Python 3.9+ for PyThaiNLP mode, or an active API key / local server for AI mode.",
     "help.gh": "Open the full guide on GitHub ↗",
     "sec.engine": "Main checker",
     "sec.rules": "Check rules",
@@ -445,25 +438,20 @@ const I18N = {
     "sum.main": "{req} request(s) · in {inTok} / out {outTok} tok · avg {tps} tok/s · {s} s/request",
     "sum.fail": " · {n} failed",
     "sum.parse": " · {n} malformed",
-    "about.new": "What's new in v{version}",
-    "about.fullLog": "View full changelog ↗",
-    "cl.new": "New",
-    "cl.better": "Improved",
-    "cl.fixed": "Fixed"
+    "about.new": "What's new in v{version} ↗",
+    "about.kofi": "Support me on Ko-fi"
   }
 };
 
-let uiLang = "th"; // ค่าเริ่มต้น = ไทย
-try {
-  const saved = JSON.parse(localStorage.getItem(K_UI_LANG));
-  if (saved === "en" || saved === "th") uiLang = saved;
-} catch (e) { /* ใช้ค่าเริ่มต้น */ }
+let appVersion = "";
+let uiLang = "en";
 
 function tr(key, vars) {
   let s = (I18N[uiLang] && I18N[uiLang][key]);
-  if (s === undefined) s = I18N.th[key];
+  if (s === undefined) s = I18N.en[key];
   if (s === undefined) return key;
-  if (vars) s = s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? vars[k] : m));
+  const v = vars ? Object.assign({ version: appVersion }, vars) : { version: appVersion };
+  s = s.replace(/\{(\w+)\}/g, (m, k) => (v[k] !== undefined ? v[k] : m));
   return s;
 }
 
@@ -481,6 +469,5 @@ function applyI18n() {
 function setUiLang(lang) {
   if (lang !== "th" && lang !== "en") return;
   uiLang = lang;
-  try { localStorage.setItem(K_UI_LANG, JSON.stringify(lang)); } catch (e) { /* ignore */ }
   applyI18n();
 }

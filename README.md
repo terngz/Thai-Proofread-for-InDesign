@@ -201,4 +201,4 @@ LM Studio: โหลดโมเดล (Load) ก่อน แล้วเปิ
 
 ---
 
-©2026 Konnext Group Company Limited. All rights reserved.
+©2026 Konnext Group. All rights reserved.

@@ -1,7 +1,4 @@
 "use strict";
-/* ============================================================
- *  settings.js : UI ตั้งค่าการเชื่อมต่อ AI / ทดสอบ / บันทึกการทำงาน / บริการตรวจสะกด
- * ============================================================ */
 
 const K_SERVICE = "ai_proofread_service";
 const K_ENGINE_MODE = "ai_proofread_engine_mode";
@@ -19,7 +16,7 @@ async function getPluginVersion() {
   } catch (e) {
     console.warn("Error reading manifest.json version:", e);
   }
-  return "1.0.0";
+  return "";
 }
 
 function setHealth(state, tip) {
@@ -44,7 +41,6 @@ function num(id, def, min, max) {
   return Math.min(max, Math.max(min, v));
 }
 
-/* ---------- สลับโหมด PyThaiNLP / AI Engine และจัดไฮไลต์ Card ---------- */
 function getSelectedEngineMode() {
   if ($("modePyThaiNLP") && $("modePyThaiNLP").checked) return "pythainlp";
   return "ai";
@@ -64,7 +60,6 @@ function syncEngineModeUI() {
   if (boxAI) boxAI.classList.toggle("active", mode === "ai");
 
   if (pyBox) pyBox.style.display = mode === "pythainlp" ? "block" : "none";
-  
   if (aiBox) aiBox.style.display = mode === "ai" ? "block" : "none";
   if (candRow) candRow.style.display = mode === "pythainlp" ? "flex" : "none";
 
@@ -333,7 +328,6 @@ function renderLog() {
   if ($("logBox")) $("logBox").value = Tele.log.join("\n");
 }
 
-/* ---------- handler ที่เดิมขาด: เลือกโมเดล / เปลี่ยนผู้ให้บริการ / เพิ่ม-ลบโปรไฟล์ / ลบ key ---------- */
 function applyModelChoice() {
   const sel = $("modelSelect");
   if (!sel || !sel.value) return;
@@ -424,33 +418,20 @@ function refreshLangUI() {
   refreshModels();
 }
 
-let pluginVersion = "";
-
-// แสดง "มีอะไรใหม่" ใน About ตามเวอร์ชันใน manifest และภาษาของ UI
-function renderChangelog() {
-  const box = $("aboutNew");
-  if (!box || typeof CHANGELOG === "undefined" || !CHANGELOG.length) return;
-  const entry = CHANGELOG.find((e) => e.version === pluginVersion) || CHANGELOG[0];
-  const data = entry[uiLang] || entry.th;
-  box.innerHTML = "";
-  box.appendChild(el("div", "cl-title", tr("about.new", { version: pluginVersion || entry.version })));
-  [["new", "cl.new"], ["better", "cl.better"], ["fixed", "cl.fixed"]].forEach(([k, label]) => {
-    const items = data[k];
-    if (!items || !items.length) return;
-    box.appendChild(el("div", "cl-sec", tr(label)));
-    items.forEach((txt) => box.appendChild(el("div", "cl-item", "• " + txt)));
-  });
-}
-
 async function initSettings() {
   Tele.onChange = renderLog;
   loadProfiles();
 
   if ($("aboutVersion")) {
     getPluginVersion().then((v) => {
+      if (!v) return;
+      appVersion = v;
       $("aboutVersion").textContent = v;
-      pluginVersion = v;
-      renderChangelog();
+      const link = $("btnOpenChangelog");
+      if (link) {
+        link.textContent = tr("about.new");
+        link.style.display = "";
+      }
     });
   }
 
@@ -468,7 +449,6 @@ async function initSettings() {
   loadEngineModePref();
   renderLog();
 
-  // Event Listeners สลับโหมดการตรวจ
   if ($("boxPyThaiNLP")) {
     $("boxPyThaiNLP").addEventListener("click", () => {
       if ($("modePyThaiNLP")) $("modePyThaiNLP").checked = true;
@@ -500,7 +480,7 @@ async function initSettings() {
   if ($("btnConnSave")) $("btnConnSave").addEventListener("click", saveConn);
   if ($("btnConnTest")) $("btnConnTest").addEventListener("click", testConn);
   if ($("btnSelfTest")) $("btnSelfTest").addEventListener("click", selfTest);
-  
+
   if ($("btnRefreshModels")) $("btnRefreshModels").addEventListener("click", refreshModels);
   if ($("serviceUrl")) $("serviceUrl").addEventListener("change", saveServicePrefs);
   if ($("btnServiceTest")) $("btnServiceTest").addEventListener("click", testService);

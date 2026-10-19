@@ -2,9 +2,6 @@
 const { app, NothingEnum, ScriptLanguage, UndoModes } = require("indesign");
 const { shell } = require("uxp");
 
-/* ============================================================
- *  CONFIG & CONSTANTS
- * ============================================================ */
 let chunkLimit = 800;
 const MAX_ORIGINAL_LEN = 30;
 const K_PRESETS = "ai_proofread_custom_presets";
@@ -15,13 +12,15 @@ const MARK_L = "【";
 const MARK_R = "】";
 const RED = "err";
 const GREEN = "ok";
+const URL_README = "https://github.com/terngz/indesign-thaiproofread/blob/main/README.md";
+const URL_CHANGELOG = "https://github.com/terngz/indesign-thaiproofread/blob/main/CHANGELOG.md";
+const URL_KOFI = "https://ko-fi.com/Y8I2292JV2";
 
 const BUILTIN_PRESETS = {
   strict_proofread: {
     get name() { return tr("ps.builtinName"); },
-    // พรอมต์มาตรฐานมี 2 ภาษา ตามภาษาของ UI (uiLang)
     prompts: {
-      th: `คุณคือ "นักพิสูจน์อักษร" (Proofreader) ที่เชี่ยวชาญทั้งภาษาไทยและภาษาอังกฤษ ไม่ใช่บรรณาธิการ โดยมีหน้าที่ในการตรวจแต่ละภาษาทั้งไทยและอังกฤษ ตามเงื่อนไขของภาษานั้น ๆ เช่น ภาษาไทยใช้หลักของราชบัณฑิตยสถาน ส่วนภาษาอังกฤษใช้หลักของ Cambridge หรือ Oxford ก็ได้ โดยอิงจากบริบทในข้อความ หน้าที่คือ ตรวจหาคำผิด ชี้เฉพาะจุดที่มีคำที่สะกดผิด สะกดเกิน เจออักขระผิดตำแหน่ง เจอสระหรือวรรณยุกต์ซ็อน เป็นต้น ทำหน้าที่ ตรวจพิสูจน์อักษร ไม่ใช่หน้าที่ของบรรณาธิการ ห้ามปรับสำนวน ห้ามเรียบเรียงใหม่`,
+      th: `คุณคือ "นักพิสูจน์อักษร" (Proofreader) ที่เชี่ยวชาญทั้งภาษาไทยและภาษาอังกฤษ ไม่ใช่บรรณาธิการ โดยมีหน้าที่ในการตรวจแต่ละภาษาทั้งไทยและอังกฤษ ตามเงื่อนไขของภาษานั้น ๆ เช่น ภาษาไทยใช้หลักของราชบัณฑิตยสถาน ส่วนภาษาอังกฤษใช้หลักของ Cambridge หรือ Oxford ก็ได้ โดยอิงจากบริบทในข้อความ หน้าที่คือ ตรวจหาคำผิด ชี้เฉพาะจุดที่มีคำที่สะกดผิด สะกดเกิน เจออักขระผิดตำแหน่ง เจอสระหรือวรรณยุกต์ซ้อน เป็นต้น ทำหน้าที่ ตรวจพิสูจน์อักษร ไม่ใช่หน้าที่ของบรรณาธิการ ห้ามปรับสำนวน ห้ามเรียบเรียงใหม่`,
       en: `You are a "Proofreader" fluent in both Thai and English, not an Editor. Your duty is to check each language (Thai and English) according to its respective guidelines—for example, following the standards of the Royal Society of Thailand for Thai, and Cambridge or Oxford standards for English, depending on the context of the text. Your role is to identify errors by pointing out specific instances of misspelled words, extra characters, misplaced characters, or overlapping vowels and tone marks. You act strictly as a proofreader, not an editor: do not alter the style or tone, and do not rewrite the text.`
     },
     get prompt() { return this.prompts[uiLang] || this.prompts.th; }
@@ -56,9 +55,6 @@ const RESPONSE_SCHEMA = {
   }
 };
 
-/* ============================================================
- *  STATE / HELPERS
- * ============================================================ */
 const $ = (id) => document.getElementById(id);
 let customPresets = {};
 let ignoreSet = new Set();
@@ -107,9 +103,6 @@ function visible(s) {
 }
 function wantText(t) { return (langs.th && THAI.test(t)) || (langs.en && /[A-Za-z]{3}/.test(t)); }
 
-/* ============================================================
- *  RULE-BASED CHECKS
- * ============================================================ */
 function runRules(text, opts) {
   const out = [];
   const add = (start, original, suggestion, issue) => out.push({ start, original, suggestion, issue });
@@ -166,9 +159,6 @@ function runRules(text, opts) {
   return out;
 }
 
-/* ============================================================
- *  CHUNK BUILDERS & PARSER
- * ============================================================ */
 function normalizeForAI(text) {
   return text
     .replace(/\t/g, " ")
@@ -218,7 +208,7 @@ function buildChunks(units) {
   return chunks;
 }
 
-function buildUserMessage(text, marked) {
+function buildUserMessage(text) {
   const head = uiLang === "en"
     ? `Proofread the text between <<< and >>> and reply with JSON only, in this format: {"errors":[{"original":"...","suggestion":"...","issue":"..."}]}\nIf there are no errors, reply {"errors":[]}`
     : `ตรวจพิสูจน์อักษรข้อความระหว่าง <<< และ >>> แล้วตอบเป็น JSON เท่านั้น ในรูปแบบ {"errors":[{"original":"...","suggestion":"...","issue":"..."}]}\nถ้าไม่พบจุดผิดให้ตอบ {"errors":[]}`;
@@ -255,16 +245,11 @@ function parseModelJson(raw) {
   return null;
 }
 
-/* ============================================================
- *  LOCAL DICTIONARY & CANDIDATES SCANNER
- * ============================================================ */
 function initSegmenter() {
   try {
     if (typeof Intl === "undefined" || typeof Intl.Segmenter !== "function") return false;
     const sg = new Intl.Segmenter("th", { granularity: "word" });
-    let n = 0;
-    for (const x of sg.segment("สวัสดีครับขอบคุณมาก")) n++;
-    if (n < 3) return false;
+    if (Array.from(sg.segment("สวัสดีครับขอบคุณมาก")).length < 3) return false;
     segmenter = sg;
     return true;
   } catch (e) { return false; }
@@ -346,9 +331,6 @@ function findCandidates(text) {
   return out;
 }
 
-/* ============================================================
- *  INDESIGN DOM MANIPULATION & UI HELPERS
- * ============================================================ */
 function collectUnits(scope) {
   const doc = app.activeDocument;
   const units = [];
@@ -537,7 +519,7 @@ function buildCard(f) {
   }
   card.appendChild(word);
 
-  // f.issue เป็น {k,p} (กฎ/คำน่าสงสัย) หรือข้อความจากบริการ/AI ("สะกดผิด" = ค่าทั่วไป ไม่ต้องแสดง)
+  // f.issue is {k, p} for rule/dictionary findings, or plain text from the service/AI
   const issueText = f.issue && typeof f.issue === "object" ? tr(f.issue.k, f.issue.p) : f.issue;
   if (issueText && issueText !== "สะกดผิด") card.appendChild(el("div", "issue", issueText));
 
@@ -609,13 +591,12 @@ function applyFix(f, all) {
   let targets = all ? f.positions.slice() : [f.positions[f.lastIdx !== undefined && f.lastIdx < f.positions.length ? f.lastIdx : 0]];
   targets.sort((a, b) => (a.unit === b.unit ? b.start - a.start : a.unit.idx - b.unit.idx));
   const original = f.original, suggestion = f.suggestion;
-  let done = 0, err = "", drift = false;
+  let done = 0, err = "";
   runUndoable(() => {
     for (const pos of targets) {
       const r = replaceAt(pos, suggestion);
       if (r.err) { err = r.err; break; }
       done++;
-      if (r.drift) drift = true;
     }
   }, tr("fix.undoLabel"));
   renderFindings();
@@ -636,7 +617,6 @@ function renderFindings() {
   list.innerHTML = "";
   list.appendChild(frag);
 }
-// เรียกถี่ ๆ ระหว่างตรวจ: รวมเป็นการวาดใหม่ครั้งเดียวทุก 250 ms
 function renderSoon() {
   if (!renderTimer) renderTimer = setTimeout(renderFindings, 250);
 }
@@ -734,14 +714,11 @@ function applyItems(items, chunkUnits, kind, ctx) {
   }
 }
 
-/* ============================================================
- *  MAIN RUN CHECK
- * ============================================================ */
 async function runCheck() {
   if (running) return;
   if (app.documents.length === 0) return setStatus(tr("run.noDoc"), RED);
 
-  const engineMode = typeof getSelectedEngineMode === "function" ? getSelectedEngineMode() : "pythainlp";
+  const engineMode = getSelectedEngineMode();
   const useRules = $("chkRules") ? $("chkRules").checked : true;
   const useService = engineMode === "pythainlp";
   const useAI = engineMode === "ai";
@@ -764,24 +741,23 @@ async function runCheck() {
     if (pr.needsKey && !keyCache[profile.id]) return setStatus(tr("run.noKey", { name: profile.name }), RED);
   }
 
-  if (useService) {
-    const svcUrl = $("serviceUrl") ? $("serviceUrl").value.trim() : "";
-    if (!svcUrl) return setStatus(tr("run.noSvcUrl"), RED);
-    setStatus(tr("run.svcConnecting"));
-    try { await serviceHealth(svcUrl); } catch (e) {
-      return setStatus(tr("run.svcDown"), RED);
-    }
-  }
+  const svcUrl = useService && $("serviceUrl") ? $("serviceUrl").value.trim() : "";
+  if (useService && !svcUrl) return setStatus(tr("run.noSvcUrl"), RED);
 
-  findings = [];
   cancelled = false;
-  if ($("resultList")) $("resultList").innerHTML = "";
-  Tele.reset();
-  renderStats();
   toggleRunning(true);
 
   try {
-    // 1. ตรวจด้วยกฎพื้นฐาน
+    if (useService) {
+      setStatus(tr("run.svcConnecting"));
+      try { await serviceHealth(svcUrl); } catch (e) { return setStatus(tr("run.svcDown"), RED); }
+    }
+
+    findings = [];
+    if ($("resultList")) $("resultList").innerHTML = "";
+    Tele.reset();
+    renderStats();
+
     if (useRules) {
       for (const u of units) {
         for (const r of runRules(u.text, { spacing, th: langs.th, en: langs.en })) {
@@ -795,9 +771,7 @@ async function runCheck() {
     const ctx = { taken: new Set(), merged: new Map(), stat: { rule: findings.length, ai: 0, svc: 0, dropped: 0 } };
     findings.forEach((f) => f.positions.forEach((p) => ctx.taken.add(p.unit.idx + ":" + p.start)));
 
-    // 2. โหมด PyThaiNLP (Python Offline Service)
     if (useService && !cancelled) {
-      const svcUrl = $("serviceUrl") ? $("serviceUrl").value.trim() : "";
       const sc = buildChunks(units);
       setStatus(tr("run.svcChecking"));
       progressStart(sc.length, "PyThaiNLP");
@@ -854,7 +828,6 @@ async function runCheck() {
       }
     }
 
-    // 3. โหมด AI Engine (LM Studio / Cloud API)
     if (useAI && !cancelled) {
       const profile = activeProfile();
       chunkLimit = profile.chunkLimit;
@@ -875,7 +848,7 @@ async function runCheck() {
 
         const req = {
           system: systemPrompt,
-          user: buildUserMessage(chunk.parts.join("\n"), false),
+          user: buildUserMessage(chunk.parts.join("\n")),
           maxTokens: profile.maxTokens,
           temperature,
           chat_template_config: { enable_thinking: !isThinkOff },
@@ -899,7 +872,6 @@ async function runCheck() {
       };
 
       await runPool(profile.parallel, total, worker);
-      progressEnd();
     }
 
   } finally {
@@ -917,9 +889,6 @@ async function runCheck() {
   }
 }
 
-/* ============================================================
- *  INIT & ACCORDIONS
- * ============================================================ */
 function initAccordions() {
   const accs = document.getElementsByClassName("acc");
   for (let i = 0; i < accs.length; i++) {
@@ -1026,25 +995,23 @@ function togglePanel(id) {
 }
 if ($("btnHelp")) $("btnHelp").addEventListener("click", () => togglePanel("helpBox"));
 if ($("btnAbout")) $("btnAbout").addEventListener("click", () => togglePanel("aboutBox"));
-// คลิกที่อื่นนอกกล่อง/ปุ่ม = ปิด
 document.addEventListener("click", (e) => {
   const inside = PANELS.some(([box, btn]) => [$(box), $(btn)].some((n) => n && n.contains(e.target)));
   if (!inside) showPanel(null);
 });
 
-if ($("btnOpenChangelog")) {
-  $("btnOpenChangelog").addEventListener("click", () => {
-    shell.openExternal("https://github.com/terngz/indesign-thaiproofread/blob/main/CHANGELOG.md");
-  });
+function openLink(url) {
+  try {
+    Promise.resolve(shell.openExternal(url)).catch((e) => console.warn("openExternal failed", e));
+  } catch (e) {
+    console.warn("openExternal failed", e);
+  }
 }
 
-if ($("btnOpenGithub")) {
-  $("btnOpenGithub").addEventListener("click", () => {
-    shell.openExternal("https://github.com/terngz/indesign-thaiproofread/blob/main/README.md");
-  });
-}
+[["btnOpenGithub", URL_README], ["btnOpenChangelog", URL_CHANGELOG], ["btnKofi", URL_KOFI]].forEach(([id, url]) => {
+  if ($(id)) $(id).addEventListener("click", () => openLink(url));
+});
 
-// ----- ภาษาของหน้าจอ -----
 function updateLangButtons() {
   ["th", "en"].forEach((l) => {
     const b = $("lang" + l.toUpperCase());
@@ -1058,7 +1025,6 @@ function syncReadyStatus() {
 }
 
 function onUiLangChange(lang) {
-  // จำไว้ก่อนสลับ: ข้อความในช่อง prompt ยังเป็นพรอมต์มาตรฐาน (ไม่ได้แก้) หรือไม่
   const sel = $("presetSelect");
   const box = $("systemPrompt");
   const cur = sel ? sel.value : "";
@@ -1073,8 +1039,8 @@ function onUiLangChange(lang) {
   renderFindings();
 
   if (sel) {
-    renderPresetOptions(cur);                       // เปลี่ยนชื่อ Preset + โหลดพรอมต์ของภาษาใหม่
-    if (box && keepTyped) box.value = typed;        // ถ้าผู้ใช้แก้เอง ไม่ทับ
+    renderPresetOptions(cur);
+    if (box && keepTyped) box.value = typed;
   }
   disarmDelete();
   refreshLangUI();
@@ -1097,6 +1063,8 @@ function init() {
   if ($("btnClearIgnore")) {
     $("btnClearIgnore").addEventListener("click", () => {
       ignoreSet.clear();
+      dict = null;
+      enDict = null;
       lsSet(K_IGNORE, []);
       updateIgnoreLabel();
       setStatus(tr("ign.cleared"));

@@ -4,10 +4,6 @@
 <head>
   <meta charset="utf-8">
   <style>
-    /* =========================================================
-     *  Design tokens  (Dark = default, Light = ตามธีม InDesign)
-     *  ระยะห่างใช้สเกล 4 / 8 / 12 / 16 px ทั้งหมด
-     * ========================================================= */
     html {
       --bg: #262626;
       --surface: #2E2E2E;
@@ -61,7 +57,6 @@
       color: var(--fg);
     }
 
-    /* ===== Header ===== */
     .title-row {
       display: flex;
       flex-direction: row;
@@ -118,7 +113,6 @@
       margin-left: 0;
     }
 
-    /* ===== Panels (About / Help / sub-panels) ===== */
     .subpanel {
       margin: 0 0 12px 0;
       padding: 12px;
@@ -150,31 +144,16 @@
       overflow-y: auto;
     }
 
-    .about-new {
-      margin: 8px 0;
-      padding: 8px 0;
-      border-top: 1px solid var(--bd);
-      border-bottom: 1px solid var(--bd);
-      max-height: 200px;
-      overflow-y: auto;
+    .about-foot {
+      margin-top: 12px !important;
     }
 
-    .cl-title {
-      font-size: 12px;
+    button.btn-kofi {
+      width: 100%;
+      color: #FFFFFF !important;
+      background-color: #3157E0 !important;
+      border-color: #3157E0 !important;
       font-weight: 700;
-      color: var(--fg);
-    }
-
-    .cl-sec {
-      margin-top: 8px;
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--accent);
-    }
-
-    .cl-item {
-      margin-top: 2px;
-      padding-left: 8px;
     }
 
     .help-foot {
@@ -194,7 +173,6 @@
       word-break: break-all;
     }
 
-    /* ===== Accordion ===== */
     .acc {
       margin: 0 0 8px 0;
       border: 1px solid var(--bd);
@@ -226,7 +204,6 @@
       border-top: 1px solid var(--bd);
     }
 
-    /* accordion ซ้อนใน AI box ใช้พื้นหลังต่างจากกล่องแม่ */
     .config-box .acc {
       background-color: var(--bg);
     }
@@ -235,7 +212,6 @@
       margin-top: 12px;
     }
 
-    /* ===== Segmented control (เลือกเครื่องมือตรวจ) ===== */
     .seg-group {
       display: flex;
       flex-direction: row;
@@ -277,7 +253,6 @@
       color: var(--fg2);
     }
 
-    /* ===== Form ===== */
     .field {
       margin: 0 0 12px 0;
     }
@@ -400,7 +375,6 @@
       margin-right: 8px;
     }
 
-    /* ===== Buttons ===== */
     .btn,
     button {
       height: 28px;
@@ -494,7 +468,6 @@
       display: none;
     }
 
-    /* ===== Status / Progress ===== */
     #status {
       margin: 0 0 8px 0;
       padding: 8px 12px;
@@ -592,7 +565,6 @@
       background-color: var(--err);
     }
 
-    /* ===== Result cards ===== */
     .card {
       margin: 0 0 8px 0;
       padding: 12px;
@@ -724,48 +696,59 @@
 <body>
   <div id="app">
 
-    <!-- ===== Header ===== -->
     <div class="title-row">
       <h3>Thai AI Proofreader</h3>
       <div class="header-btns">
         <span class="lang-switch">
-          <span id="langTH" class="lang-btn active">TH</span>
-          <span id="langEN" class="lang-btn">EN</span>
+          <span id="langEN" class="lang-btn active">EN</span>
+          <span id="langTH" class="lang-btn">TH</span>
         </span>
         <span id="btnHelp" class="icon-btn">?</span>
         <span id="btnAbout" class="icon-btn">i</span>
       </div>
     </div>
-    <p class="sub" data-i18n="hdr.sub">พิสูจน์อักษร ไทย / อังกฤษ</p>
+    <p class="sub" data-i18n="hdr.sub">Thai / English proofreading</p>
 
     <div id="aboutBox" class="subpanel" style="display: none;">
       <div class="help-title">Thai AI Proofreader</div>
-      <div><span data-i18n="about.ver">เวอร์ชัน</span> <span id="aboutVersion"></span></div>
-      <div data-i18n="about.desc">ปลั๊กอินพิสูจน์อักษรภาษาไทยและอังกฤษสำหรับ Adobe InDesign ด้วย PyThaiNLP และ AI Engine</div>
-      <div id="aboutNew" class="about-new"></div>
-      <div><span id="btnOpenChangelog" class="link" data-i18n="about.fullLog">ดูประวัติการเปลี่ยนแปลงทั้งหมด ↗</span></div>
-      <div>©2026 Konnext Group Company Limited. All rights reserved.</div>
+      <div data-i18n="about.desc">Thai and English proofreading plugin for Adobe InDesign, powered by PyThaiNLP and AI engines</div>
+      <div><span data-i18n="about.ver">Version</span> <span id="aboutVersion"></span></div>
+      <div><span id="btnOpenChangelog" class="link" style="display: none;" data-i18n="about.new">What's new in v{version} ↗</span></div>
+      <div>©2026 Konnext Group. All rights reserved.</div>
+      <div class="about-foot"><button id="btnKofi" class="btn-kofi" data-i18n="about.kofi">Support me on Ko-fi</button></div>
     </div>
 
     <div id="helpBox" class="subpanel" style="display: none;">
-      <div class="help-title" data-i18n="help.title">คู่มือการใช้งาน</div>
+      <div class="help-title" data-i18n="help.title">User guide</div>
       <div class="help-scroll">
-        <div><b data-i18n="help.s1">1. เลือกเครื่องมือตรวจหลัก</b></div>
-        <div data-i18n="help.s1a">PyThaiNLP: ตรวจสะกดออฟไลน์ เร็ว (ต้องรัน spellcheck_server.py)</div>
-        <div data-i18n="help.s1b">AI Engine: ตรวจลึกตามบริบท (LM Studio / Ollama / Cloud API)</div>
-        <div><b data-i18n="help.s2">2. เริ่มตรวจ</b></div>
-        <div data-i18n="help.s2a">เลือกขอบเขตข้อความ แล้วกด "ตรวจคำผิด"</div>
-        <div><b data-i18n="help.s3">3. จัดการผลการตรวจ</b></div>
-        <div data-i18n="help.s3a">กด "ไปที่จุดนี้" เพื่อเลือกคำใน InDesign หรือ "แก้เลย" เพื่อแก้ทันที</div>
+        <div style="margin-bottom: 6px;">
+          <div><b data-i18n="help.s1">1. Choose the main checker</b></div>
+          <div style="padding-left: 16px;" data-i18n="help.s1a">PyThaiNLP: fast offline spell check (requires spellcheck_server.py)</div>
+          <div style="padding-left: 16px;" data-i18n="help.s1b">AI Engine: context-aware check (LM Studio / Ollama / Cloud API)</div>
+        </div>
+
+        <div style="margin-bottom: 6px;">
+          <div><b data-i18n="help.s2">2. Run the check</b></div>
+          <div style="padding-left: 16px;" data-i18n="help.s2a">Choose the scope, then press "Check"</div>
+        </div>
+
+        <div style="margin-bottom: 6px;">
+          <div><b data-i18n="help.s3">3. Handle the results</b></div>
+          <div style="padding-left: 16px;" data-i18n="help.s3a">Press "Go to" to select the word in InDesign, or "Fix" to correct it right away</div>
+        </div>
+
+        <div style="margin-top: 14px;">
+          <div><b data-i18n="help.s4">Requirements</b></div>
+          <div style="padding-left: 16px;" data-i18n="help.s4a">Python 3.9+ for PyThaiNLP mode, or an active API key / local server for AI mode.</div>
+        </div>
       </div>
-      <div class="help-foot">
-        <span id="btnOpenGithub" class="link" data-i18n="help.gh">เปิดคู่มือฉบับเต็มบน GitHub ↗</span>
+      <div class="help-foot" style="margin-top: 10px;">
+        <span id="btnOpenGithub" class="link" data-i18n="help.gh">Open the full guide on GitHub ↗</span>
       </div>
     </div>
 
-    <!-- ===== เครื่องมือตรวจหลัก ===== -->
     <div class="acc" id="accEngine" data-open="1">
-      <div class="acc-head"><span data-i18n="sec.engine">เครื่องมือตรวจหลัก</span><span class="acc-ind">−</span></div>
+      <div class="acc-head"><span data-i18n="sec.engine">Main checker</span><span class="acc-ind">−</span></div>
       <div class="acc-body">
 
         <div class="seg-group">
@@ -780,52 +763,48 @@
         </div>
         <div id="engineDesc" class="hint"></div>
 
-        <!-- โหมด PyThaiNLP -->
         <div id="pythainlpConfigBox" class="config-box">
           <div class="field">
             <div class="lbl">
-              <span data-i18n="svc.url">URL บริการตรวจสะกด</span>
+              <span data-i18n="svc.url">Spell-check service URL</span>
               <span id="btnServiceHelp" class="icon-btn sm">?</span>
             </div>
             <div id="serviceHelp" class="subpanel" style="display: none;">
-              <div class="help-title" data-i18n="svc.h.title">วิธีติดตั้งและรันบริการตรวจสะกด</div>
-              <div data-i18n="svc.h.1">1. ติดตั้ง Python 3.9 ขึ้นไป (ดาวน์โหลดจาก python.org)</div>
-              <div data-i18n="svc.h.2">2. เปิด PowerShell (Windows) หรือ Terminal (Mac) แล้วติดตั้งแพ็กเกจ ครั้งเดียวพอ:</div>
+              <div class="help-title" data-i18n="svc.h.title">How to install and run the spell-check service</div>
+              <div data-i18n="svc.h.1">1. Install Python 3.9 or later (download from python.org)</div>
+              <div data-i18n="svc.h.2">2. Open PowerShell (Windows) or Terminal (Mac) and install the packages (one time only):</div>
               <div class="code">pip install pythainlp pyspellchecker</div>
-              <div data-i18n="svc.h.3">3. รันบริการ ใส่พาธเต็มของไฟล์ spellcheck_server.py ที่บันทึกไว้ (ลากไฟล์มาวางในหน้าต่างได้):</div>
+              <div data-i18n="svc.h.3">3. Run the service using the full path of the saved spellcheck_server.py (you can drag the file into the window):</div>
               <div class="code">python "C:\{your save path}\spellcheck_server.py"</div>
-              <div data-i18n="svc.h.4">4. เห็นข้อความ "spellcheck service on http://127.0.0.1:8765" แสดงว่าพร้อม
-                ต้องเปิดหน้าต่างนั้นค้างไว้ระหว่างใช้งาน</div>
-              <div data-i18n="svc.h.5">5. กลับมากด "ทดสอบ"</div>
-              <div class="issue" data-i18n="svc.h.note">ถ้าเปลี่ยนพอร์ต: python spellcheck_server.py --port 9000 แล้วแก้ URL ให้ตรงกัน
-                รายละเอียดเพิ่มเติมดูใน README.md</div>
+              <div data-i18n="svc.h.4">4. When you see "spellcheck service on http://127.0.0.1:8765" it is ready. Keep that window open while you work.</div>
+              <div data-i18n="svc.h.5">5. Come back and press "Test"</div>
+              <div class="issue" data-i18n="svc.h.note">To change the port: python spellcheck_server.py --port 9000, then update the URL to match. See README.md for details.</div>
             </div>
             <div class="inline-row">
               <input type="text" id="serviceUrl" value="http://127.0.0.1:8765">
-              <button id="btnServiceTest" data-i18n="btn.test">ทดสอบ</button>
+              <button id="btnServiceTest" data-i18n="btn.test">Test</button>
             </div>
             <div id="serviceResult"></div>
           </div>
         </div>
 
-        <!-- โหมด AI Engine -->
         <div id="aiConfigBox" class="config-box" style="display: none;">
 
           <div class="acc" id="accModel" data-open="1">
             <div class="acc-head">
-              <span><span id="accModelTitle">โมเดล AI</span><span id="healthDot" class="dot"></span></span>
+              <span><span id="accModelTitle">AI model</span><span id="healthDot" class="dot"></span></span>
               <span class="acc-ind">−</span>
             </div>
             <div class="acc-body">
               <div class="field row">
                 <div style="flex: 1;">
-                  <div class="lbl"><span data-i18n="mdl.profile">โปรไฟล์</span><span id="btnConnSettings" class="link" data-i18n="mdl.settings">ตั้งค่า</span></div>
+                  <div class="lbl"><span data-i18n="mdl.profile">Profile</span><span id="btnConnSettings" class="link" data-i18n="mdl.settings">Settings</span></div>
                   <select id="profileSelect"></select>
                 </div>
                 <div style="flex: 1;">
-                  <div class="lbl"><span data-i18n="mdl.model">โมเดล</span><span id="btnRefreshModels" class="link" data-i18n="mdl.refresh">รีเฟรช</span></div>
+                  <div class="lbl"><span data-i18n="mdl.model">Model</span><span id="btnRefreshModels" class="link" data-i18n="mdl.refresh">Refresh</span></div>
                   <select id="modelSelect">
-                    <option value="" data-i18n="mdl.connecting">กำลังเชื่อมต่อ...</option>
+                    <option value="" data-i18n="mdl.connecting">Connecting...</option>
                   </select>
                 </div>
               </div>
@@ -833,11 +812,11 @@
 
               <div id="connPanel" class="subpanel" style="display: none; margin: 12px 0 0 0;">
                 <div class="field">
-                  <div class="lbl"><span data-i18n="conn.provider">ผู้ให้บริการ</span></div>
+                  <div class="lbl"><span data-i18n="conn.provider">Provider</span></div>
                   <select id="connPreset"></select>
                 </div>
                 <div class="field">
-                  <div class="lbl"><span data-i18n="conn.name">ชื่อโปรไฟล์</span></div>
+                  <div class="lbl"><span data-i18n="conn.name">Profile name</span></div>
                   <input type="text" id="connName">
                 </div>
                 <div class="field">
@@ -846,12 +825,12 @@
                 </div>
                 <div class="field">
                   <div class="lbl"><span id="connKeyLabel">API KEY</span><span id="btnConnClearKey"
-                      class="link" data-i18n="conn.clearKey">ลบ key</span></div>
-                  <input type="password" id="connKey" placeholder="วาง API key ที่นี่" data-i18n-placeholder="conn.keyPh">
+                      class="link" data-i18n="conn.clearKey">Remove key</span></div>
+                  <input type="password" id="connKey" placeholder="Paste your API key here" data-i18n-placeholder="conn.keyPh">
                   <div id="connKeyNote" class="issue"></div>
                 </div>
                 <div class="field">
-                  <div class="lbl"><span data-i18n="conn.modelName">ชื่อโมเดล (พิมพ์เอง ถ้าไม่อยู่ในรายการ)</span></div>
+                  <div class="lbl"><span data-i18n="conn.modelName">Model name (type it if not in the list)</span></div>
                   <input type="text" id="connModel">
                 </div>
                 <div class="field row">
@@ -868,11 +847,11 @@
                   <div style="flex: 2;">
                     <div class="lbl"><span>THINKING / REASONING</span></div>
                     <select id="connThink">
-                      <option value="auto" data-i18n="think.auto">ค่าเริ่มต้นของโมเดล</option>
-                      <option value="off" data-i18n="think.off">ปิด</option>
-                      <option value="low" data-i18n="think.low">ต่ำ</option>
-                      <option value="medium" data-i18n="think.medium">กลาง</option>
-                      <option value="high" data-i18n="think.high">สูง</option>
+                      <option value="auto" data-i18n="think.auto">Model default</option>
+                      <option value="off" data-i18n="think.off">Off</option>
+                      <option value="low" data-i18n="think.low">Low</option>
+                      <option value="medium" data-i18n="think.medium">Medium</option>
+                      <option value="high" data-i18n="think.high">High</option>
                     </select>
                   </div>
                   <div style="flex: 1;" id="connThinkBudgetBox">
@@ -883,7 +862,7 @@
                 <div id="connThinkNote" class="issue" style="margin: -4px 0 12px 0;"></div>
                 <div class="field row">
                   <div style="flex: 1;">
-                    <div class="lbl"><span data-i18n="conn.timeout">TIMEOUT (วิ)</span></div>
+                    <div class="lbl"><span data-i18n="conn.timeout">TIMEOUT (sec)</span></div>
                     <input type="number" id="connTimeout" min="10" max="900" step="10">
                   </div>
                   <div style="flex: 1;">
@@ -891,32 +870,32 @@
                     <input type="number" id="connRetries" min="0" max="5" step="1">
                   </div>
                   <div style="flex: 1;">
-                    <div class="lbl"><span data-i18n="conn.parallel">พร้อมกัน</span></div>
+                    <div class="lbl"><span data-i18n="conn.parallel">PARALLEL</span></div>
                     <input type="number" id="connParallel" min="1" max="8" step="1">
                   </div>
                 </div>
                 <div class="field">
-                  <div class="lbl"><span data-i18n="conn.chunk">CHUNK (ตัวอักษรต่อ request)</span></div>
+                  <div class="lbl"><span data-i18n="conn.chunk">CHUNK (characters per request)</span></div>
                   <input type="number" id="connChunk" min="300" max="12000" step="100">
                 </div>
                 <label class="chk" id="connLmNativeRow" style="display: none;">
                   <input type="checkbox" id="connLmNative">
-                  <span data-i18n="conn.lmNative">ใช้ endpoint /api/v0 ของ LM Studio เพื่อดู tok/s จริงและ TTFT</span>
+                  <span data-i18n="conn.lmNative">Use LM Studio's /api/v0 endpoint to see real tok/s and TTFT</span>
                 </label>
                 <div id="connCloudRow" style="display: none;">
                   <label class="chk">
                     <input type="checkbox" id="connCloudAck">
-                    <span data-i18n="conn.cloudAck">รับทราบว่าข้อความในเอกสารจะถูกส่งออกจากเครื่องไปยังผู้ให้บริการนี้</span>
+                    <span data-i18n="conn.cloudAck">I understand that document text will be sent from this computer to this provider</span>
                   </label>
                 </div>
                 <div class="btn-line">
-                  <button id="btnConnSave" class="btn-accent" data-i18n="btn.save">บันทึก</button>
-                  <button id="btnConnTest" data-i18n="conn.test">ทดสอบการเชื่อมต่อ</button>
-                  <button id="btnSelfTest" data-i18n="conn.selfTest">ทดสอบโมเดล</button>
+                  <button id="btnConnSave" class="btn-accent" data-i18n="btn.save">Save</button>
+                  <button id="btnConnTest" data-i18n="conn.test">Test connection</button>
+                  <button id="btnSelfTest" data-i18n="conn.selfTest">Test model</button>
                 </div>
                 <div class="btn-line">
-                  <button id="btnConnNew" data-i18n="conn.new">เพิ่มโปรไฟล์ใหม่</button>
-                  <button id="btnConnDelete" class="btn-danger" data-i18n="conn.delete">ลบโปรไฟล์</button>
+                  <button id="btnConnNew" data-i18n="conn.new">Add new profile</button>
+                  <button id="btnConnDelete" class="btn-danger" data-i18n="conn.delete">Delete profile</button>
                 </div>
                 <div id="connResult"></div>
               </div>
@@ -924,15 +903,15 @@
           </div>
 
           <div class="acc" id="accPrompt" data-open="0">
-            <div class="acc-head"><span data-i18n="sec.prompt">คำสั่ง AI (System Instruction)</span><span class="acc-ind">+</span></div>
+            <div class="acc-head"><span data-i18n="sec.prompt">AI instruction (System Instruction)</span><span class="acc-ind">+</span></div>
             <div class="acc-body">
               <div class="field">
-                <div class="lbl"><span>PRESET</span><span id="btnResetPrompt" class="link" data-i18n="pre.reset">คืนค่าเริ่มต้น</span></div>
+                <div class="lbl"><span>PRESET</span><span id="btnResetPrompt" class="link" data-i18n="pre.reset">Restore default</span></div>
                 <select id="presetSelect"></select>
                 <div class="preset-row">
-                  <input type="text" id="presetName" placeholder="ชื่อ Preset ใหม่..." data-i18n-placeholder="pre.namePh">
-                  <button id="btnSavePreset" data-i18n="btn.save">บันทึก</button>
-                  <button id="btnDeletePreset" data-i18n="btn.delete">ลบ</button>
+                  <input type="text" id="presetName" placeholder="New preset name..." data-i18n-placeholder="pre.namePh">
+                  <button id="btnSavePreset" data-i18n="btn.save">Save</button>
+                  <button id="btnDeletePreset" data-i18n="btn.delete">Delete</button>
                 </div>
               </div>
               <div class="field">
@@ -946,49 +925,46 @@
       </div>
     </div>
 
-    <!-- ===== กฎการตรวจ ===== -->
     <div class="acc" id="accRules" data-open="1">
-      <div class="acc-head"><span data-i18n="sec.rules">ตัวเลือกกฎการตรวจ</span><span class="acc-ind">−</span></div>
+      <div class="acc-head"><span data-i18n="sec.rules">Check rules</span><span class="acc-ind">−</span></div>
       <div class="acc-body">
         <label class="chk">
           <input type="checkbox" id="chkRules" checked>
-          <span data-i18n="rules.auto">ตรวจด้วยกฎอัตโนมัติ (สระซ้อน, อักขระแปลก, พิมพ์ซ้ำ)</span>
+          <span data-i18n="rules.auto">Automatic rules (stacked vowels, odd characters, duplicates)</span>
         </label>
         <label class="chk">
           <input type="checkbox" id="chkSpacing" checked>
-          <span data-i18n="rules.spacing">ตรวจเว้นวรรคไม้ยมก (ๆ) และเว้นวรรคซ้อน</span>
+          <span data-i18n="rules.spacing">Check spacing around mai yamok (ๆ) and double spaces</span>
         </label>
         <label class="chk" id="chkCandPyRow">
           <input type="checkbox" id="chkCandPy">
-          <span data-i18n="rules.cand">ตรวจจับคำน่าสงสัยด้วยพจนานุกรมในเครื่อง (คำที่ไม่มีในคลัง)</span>
+          <span data-i18n="rules.cand">Flag suspicious words using the local dictionary (words not in the dictionary)</span>
         </label>
       </div>
     </div>
 
-    <!-- ===== ขอบเขต และภาษา ===== -->
     <div class="acc" id="accScope" data-open="1">
-      <div class="acc-head"><span data-i18n="sec.scope">ขอบเขต และภาษา</span><span class="acc-ind">−</span></div>
+      <div class="acc-head"><span data-i18n="sec.scope">Scope &amp; languages</span><span class="acc-ind">−</span></div>
       <div class="acc-body">
         <div class="field">
-          <div class="lbl"><span data-i18n="scope.label">ขอบเขตการตรวจ</span></div>
+          <div class="lbl"><span data-i18n="scope.label">Check scope</span></div>
           <select id="scopeSelect">
-            <option value="selection" selected data-i18n="scope.sel">ตามที่เลือก (กรอบ / ข้อความ / ตาราง)</option>
-            <option value="page" data-i18n="scope.page">ทั้งหน้าปัจจุบัน</option>
-            <option value="document" data-i18n="scope.doc">ทั้งเอกสาร</option>
+            <option value="selection" selected data-i18n="scope.sel">Selection (frame / text / table)</option>
+            <option value="page" data-i18n="scope.page">Current page</option>
+            <option value="document" data-i18n="scope.doc">Entire document</option>
           </select>
         </div>
         <div class="field lang-row">
-          <span class="lang-lbl" data-i18n="scope.langLbl">ภาษาที่ตรวจ</span>
-          <label class="chk"><input type="checkbox" id="chkTH" checked><span data-i18n="scope.th">ไทย</span></label>
-          <label class="chk"><input type="checkbox" id="chkEN" checked><span data-i18n="scope.en">อังกฤษ</span></label>
+          <span class="lang-lbl" data-i18n="scope.langLbl">Languages to check</span>
+          <label class="chk"><input type="checkbox" id="chkTH" checked><span data-i18n="scope.th">Thai</span></label>
+          <label class="chk"><input type="checkbox" id="chkEN" checked><span data-i18n="scope.en">English</span></label>
         </div>
       </div>
     </div>
 
-    <!-- ===== ปุ่มตรวจ / สถานะ / ผลลัพธ์ ===== -->
     <div id="actionBtnWrap">
-      <sp-button id="btnCheck" variant="cta" data-i18n="btn.check">ตรวจคำผิด</sp-button>
-      <sp-button id="btnCancel" variant="secondary" style="display: none;" data-i18n="btn.stop">หยุด</sp-button>
+      <sp-button id="btnCheck" variant="cta" data-i18n="btn.check">Check</sp-button>
+      <sp-button id="btnCancel" variant="secondary" style="display: none;" data-i18n="btn.stop">Stop</sp-button>
     </div>
 
     <div id="progressWrap" style="display: none;">
@@ -998,28 +974,26 @@
       <div id="progressText"></div>
     </div>
 
-    <div id="status">สถานะ: พร้อมใช้งาน</div>
+    <div id="status">Status: ready</div>
     <div id="statsLine"></div>
     <div id="resultList"></div>
 
-    <!-- ===== บันทึกการทำงาน (ย้ายลงล่าง เพราะใช้น้อย) ===== -->
     <div class="acc" id="accLog" data-open="0">
-      <div class="acc-head"><span data-i18n="sec.log">บันทึกการทำงาน (token / ความเร็ว)</span><span class="acc-ind">+</span></div>
+      <div class="acc-head"><span data-i18n="sec.log">Activity log (tokens / speed)</span><span class="acc-ind">+</span></div>
       <div class="acc-body">
         <textarea id="logBox" readonly></textarea>
-        <div class="btn-line"><button id="btnClearLog" data-i18n="log.clear">ล้างบันทึก</button></div>
+        <div class="btn-line"><button id="btnClearLog" data-i18n="log.clear">Clear log</button></div>
       </div>
     </div>
 
     <div class="footer">
-      <span id="btnResetAll" class="link" data-i18n="foot.reset">ล้างการตรวจทั้งหมด</span>
-      <span id="btnClearIgnore" class="link">ล้างรายการคำที่ละเว้น (0)</span>
+      <span id="btnResetAll" class="link" data-i18n="foot.reset">Clear all results</span>
+      <span id="btnClearIgnore" class="link">Clear ignored words (0)</span>
     </div>
 
   </div>
 
   <script src="i18n.js"></script>
-  <script src="changelog.js"></script>
   <script src="words_th.js"></script>
   <script src="words_en.js"></script>
   <script src="providers.js"></script>

@@ -1,12 +1,4 @@
 "use strict";
-/* ============================================================
- *  providers.js
- *  - ผู้ให้บริการ AI (LM Studio / Ollama / OpenAI / Claude / Gemini / อื่น ๆ)
- *  - โปรไฟล์การเชื่อมต่อ + เก็บ API key
- *  - ตัวเรียกโมเดลแบบรวมศูนย์ (retry / timeout / ปรับพารามิเตอร์อัตโนมัติเมื่อโมเดลไม่รองรับ)
- *  - Telemetry (จำนวน token, ความเร็ว, บันทึกการทำงาน)
- *  - ตัวเรียกบริการตรวจสะกดภายนอก (PyThaiNLP)
- * ============================================================ */
 
 const K_PROFILES = "ai_proofread_profiles_v2";
 const K_KEY_PREFIX = "ai_proofread_key_";
@@ -26,7 +18,6 @@ const PROVIDER_PRESETS = {
   custom: { get label() { return tr("prov.custom"); }, type: "openai", baseUrl: "http://127.0.0.1:8000/v1", needsKey: false, cloud: true, tokenParam: "max_tokens", jsonMode: "object", parallel: 1, chunkLimit: 1200, timeoutSec: 120 }
 };
 
-/* ---------------- storage ---------------- */
 function pLsGet(key, fallback) {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; }
 }
@@ -87,7 +78,6 @@ function activeProfile() {
   return ProfileStore.list.find((p) => p.id === ProfileStore.active) || ProfileStore.list[0];
 }
 
-/* ---------------- API key ---------------- */
 function decodeBytes(v) {
   if (v == null) return "";
   if (typeof v === "string") return v;
@@ -144,7 +134,6 @@ async function loadKeyFor(profile) {
   return keyCache[profile.id];
 }
 
-/* ---------------- HTTP ---------------- */
 class HttpError extends Error {
   constructor(message, status, body) {
     super(message);
@@ -202,11 +191,6 @@ function friendlyError(e, profile) {
   return `${name}: ${hint}${snip ? " — " + snip : ""}`;
 }
 
-function isFatalError(e) {
-  return !!e && (e.status === 401 || e.status === 403 || e.status === 404 || e.status === 400);
-}
-
-/* ---------------- รายชื่อโมเดล ---------------- */
 function anthropicHeaders(key) {
   return {
     "Content-Type": "application/json",
@@ -258,10 +242,7 @@ async function providerListModels(profile) {
   return { ids, ms: Date.now() - t0, meta };
 }
 
-/* ---------------- Thinking / Reasoning ---------------- */
 const LOCAL_PRESETS = ["lmstudio", "ollama", "custom"];
-const THINK_OFF_MAP = { openai: "minimal", gemini: "none", groq: "none", xai: "low" };
-const THINK_EFFORT_PRESETS = ["openai", "gemini", "groq", "xai", "lmstudio", "ollama", "custom"];
 const THINK_BUDGET_DEFAULT = { low: 2048, medium: 6000, high: 12000 };
 
 function thinkNote(preset) {
@@ -282,7 +263,6 @@ function applyThinkOpenAI(profile, caps, body) {
   const isOff = th === "off" || th === "disabled" || th === "ปิด";
 
   if (isOff) {
-    // 🟢 ส่งสวิตช์ปิด Thinking ทุกรูปแบบที่ LM Studio / llama.cpp / OpenAI ดักอ่าน
     body.reasoning_effort = "none";
     body.reasoning = "none";
     body.chat_template_config = { enable_thinking: false };
@@ -295,7 +275,6 @@ function applyThinkOpenAI(profile, caps, body) {
   }
 }
 
-/* ---------------- เรียกโมเดล ---------------- */
 function adaptOpenAICaps(caps, profile, errText) {
   const t = String(errText || "").toLowerCase();
   const mode = caps.jsonMode || profile.jsonMode;
@@ -329,23 +308,19 @@ async function completeOpenAI(profile, req, caps) {
   for (let attempt = 0; attempt < 6; attempt++) {
     const useNative = profile.preset === "lmstudio" && profile.lmNative !== false && !caps.nativeFail;
     const url = useNative ? base.replace(/\/v1$/, "") + "/api/v0/chat/completions" : base + "/chat/completions";
-    
-    // 🟢 จัดการ Payload ส่งไปที่ API ให้สอดคล้องกับค่าที่ผู้ใช้กำหนดใน UXP
+
     const body = {
       messages: [{ role: "system", content: req.system }, { role: "user", content: req.user }],
       stream: false
     };
 
     if (profile.model) body.model = profile.model;
-    
-    // 🟢 ส่ง Temperature จาก Profile / Request
+
     const tempVal = req.temperature !== undefined ? req.temperature : profile.temperature;
     if (caps.temperature !== false) body.temperature = Number(tempVal) || 0;
 
-    // 🟢 ส่ง Thinking Mode
     applyThinkOpenAI(profile, caps, body);
 
-    // 🟢 ส่ง Max Tokens
     const tokenKey = caps.tokenParam || presetOf(profile).tokenParam || "max_tokens";
     body[tokenKey] = req.maxTokens || profile.maxTokens || 1500;
 
@@ -450,7 +425,6 @@ async function providerComplete(profile, req) {
   }
 }
 
-/* ---------------- บริการตรวจสะกดภายนอก (PyThaiNLP) ---------------- */
 async function serviceCheck(url, text, langsObj, timeoutSec) {
   const data = await httpJson(url.replace(/\/+$/, "") + "/check", {
     method: "POST",
@@ -463,7 +437,6 @@ async function serviceHealth(url) {
   return httpJson(url.replace(/\/+$/, "") + "/health", { method: "GET" }, 8);
 }
 
-/* ---------------- Telemetry ---------------- */
 function pad2(n) { return (n < 10 ? "0" : "") + n; }
 const Tele = {
   log: [],
