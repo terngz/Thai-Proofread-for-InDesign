@@ -23,7 +23,7 @@ const PROVIDER_PRESETS = {
   deepseek: { label: "DeepSeek", type: "openai", baseUrl: "https://api.deepseek.com/v1", needsKey: true, cloud: true, tokenParam: "max_tokens", jsonMode: "object", parallel: 2, chunkLimit: 2000, timeoutSec: 120 },
   xai: { label: "xAI (Grok)", type: "openai", baseUrl: "https://api.x.ai/v1", needsKey: true, cloud: true, tokenParam: "max_tokens", jsonMode: "object", parallel: 2, chunkLimit: 2000, timeoutSec: 90 },
   together: { label: "Together AI", type: "openai", baseUrl: "https://api.together.xyz/v1", needsKey: true, cloud: true, tokenParam: "max_tokens", jsonMode: "object", parallel: 3, chunkLimit: 2000, timeoutSec: 90 },
-  custom: { label: "อื่น ๆ (OpenAI-compatible)", type: "openai", baseUrl: "http://127.0.0.1:8000/v1", needsKey: false, cloud: true, tokenParam: "max_tokens", jsonMode: "object", parallel: 1, chunkLimit: 1200, timeoutSec: 120 }
+  custom: { get label() { return tr("prov.custom"); }, type: "openai", baseUrl: "http://127.0.0.1:8000/v1", needsKey: false, cloud: true, tokenParam: "max_tokens", jsonMode: "object", parallel: 1, chunkLimit: 1200, timeoutSec: 120 }
 };
 
 /* ---------------- storage ---------------- */
@@ -191,17 +191,11 @@ function extractErrMsg(body) {
 }
 
 function friendlyError(e, profile) {
-  const name = profile ? profile.name : "ผู้ให้บริการ";
-  if (e && e.timeout) return `${name}: ไม่ตอบภายในเวลาที่กำหนด (เพิ่ม Timeout หรือใช้โมเดลที่เร็วขึ้น)`;
-  if (e && e.network) return `${name}: เชื่อมต่อไม่ได้ (${profile ? profile.baseUrl : ""}) ตรวจ URL / เปิด server / อินเทอร์เน็ต`;
-  const hints = {
-    400: "คำขอไม่ถูกต้อง",
-    401: "API key ไม่ถูกต้องหรือหมดอายุ",
-    403: "ไม่มีสิทธิ์ใช้งาน (ตรวจ key / ภูมิภาค / การเรียกเก็บเงิน)",
-    404: "ไม่พบ endpoint หรือโมเดล (ตรวจ Base URL และชื่อโมเดล)",
-    429: "ถูกจำกัดอัตราหรือโควตาหมด",
-    529: "ผู้ให้บริการกำลังโหลดหนัก"
-  };
+  const name = profile ? profile.name : tr("err.provider");
+  if (e && e.timeout) return tr("err.timeout", { name });
+  if (e && e.network) return tr("err.network", { name, url: profile ? profile.baseUrl : "" });
+  const hints = {};
+  [400, 401, 403, 404, 429, 529].forEach((c) => { hints[c] = tr("http." + c); });
   const status = e && e.status;
   const hint = hints[status] || (status ? "HTTP " + status : String((e && e.message) || e));
   const snip = e && e.body ? extractErrMsg(e.body) : "";
@@ -271,14 +265,14 @@ const THINK_EFFORT_PRESETS = ["openai", "gemini", "groq", "xai", "lmstudio", "ol
 const THINK_BUDGET_DEFAULT = { low: 2048, medium: 6000, high: 12000 };
 
 function thinkNote(preset) {
-  const base = "ถ้าโมเดลไม่รองรับ ปลั๊กอินจะข้ามค่านี้ให้เอง งานพิสูจน์อักษรไม่ต้องคิดลึก ปิดหรือ 'ต่ำ' จะเร็วและประหยัดกว่า ถ้าเปิดควรเพิ่ม MAX TOKENS";
-  if (preset === "anthropic") return "Claude: ใช้ extended thinking ตาม BUDGET (ขั้นต่ำ 1024) เมื่อเปิดจะไม่บังคับ tool JSON และไม่ส่ง temperature. " + base;
-  if (preset === "openai") return "OpenAI: ส่งเป็น reasoning_effort (ปิด = minimal) ใช้ได้กับโมเดลสาย reasoning. " + base;
-  if (preset === "gemini") return "Gemini: ส่งเป็น reasoning_effort (ปิด = none ใช้ได้เฉพาะรุ่นที่ปิด thinking ได้). " + base;
-  if (preset === "openrouter") return "OpenRouter: ส่งเป็น reasoning.effort. " + base;
-  if (preset === "groq" || preset === "xai") return "ส่งเป็น reasoning_effort (บางรุ่นเท่านั้น). " + base;
-  if (LOCAL_PRESETS.indexOf(preset) >= 0) return "ส่ง chat_template_config หรือ reasoning_effort สั่งให้ LM Studio ปิด Thinking บังคับปิดความคิดลึกแบบครอบจักรวาล. " + base;
-  return "ผู้ให้บริการนี้ไม่มีพารามิเตอร์ thinking มาตรฐาน ปลั๊กอินจะไม่ส่งค่านี้";
+  const base = tr("tn.base");
+  if (preset === "anthropic") return tr("tn.anthropic") + base;
+  if (preset === "openai") return tr("tn.openai") + base;
+  if (preset === "gemini") return tr("tn.gemini") + base;
+  if (preset === "openrouter") return tr("tn.openrouter") + base;
+  if (preset === "groq" || preset === "xai") return tr("tn.groqxai") + base;
+  if (LOCAL_PRESETS.indexOf(preset) >= 0) return tr("tn.local") + base;
+  return tr("tn.none");
 }
 
 function applyThinkOpenAI(profile, caps, body) {
@@ -382,7 +376,7 @@ async function completeOpenAI(profile, req, caps) {
       ttft: stats.time_to_first_token || null
     };
   }
-  throw new HttpError("ปรับพารามิเตอร์แล้วยังใช้ไม่ได้", 400);
+  throw new HttpError(tr("err.adapt"), 400);
 }
 
 async function completeAnthropic(profile, req, caps) {
@@ -427,7 +421,7 @@ async function completeAnthropic(profile, req, caps) {
     const usage = data.usage || {};
     return { text, finish: data.stop_reason || "", inTok: usage.input_tokens || 0, outTok: usage.output_tokens || 0, tps: null, ttft: null };
   }
-  throw new HttpError("ปรับพารามิเตอร์แล้วยังใช้ไม่ได้", 400);
+  throw new HttpError(tr("err.adapt"), 400);
 }
 
 async function providerComplete(profile, req) {
@@ -447,7 +441,7 @@ async function providerComplete(profile, req) {
       const retriable = e.timeout || e.network || e.status === 429 || e.status === 529 || (e.status >= 500 && e.status < 600);
       if (retriable && attempt < retries) {
         attempt++;
-        Tele.add(`ลองใหม่ครั้งที่ ${attempt} (${friendlyError(e, profile)})`);
+        Tele.add(tr("tele.retry", { n: attempt, msg: friendlyError(e, profile) }));
         await sleep(1000 * Math.pow(2, attempt - 1));
         continue;
       }
@@ -492,12 +486,12 @@ const Tele = {
     this.add(`${label}  ${(r.ms / 1000).toFixed(1)}s  in ${r.inTok || "-"} / out ${r.outTok || "-"} tok` +
       (r.tps ? `  ${r.tps.toFixed(1)} tok/s` : "") + (r.ttft ? `  TTFT ${Number(r.ttft).toFixed(2)}s` : ""));
   },
-  failed(label, msg) { this.fail++; this.add(`${label}  ล้มเหลว: ${msg}`); },
+  failed(label, msg) { this.fail++; this.add(tr("tele.failed", { label, msg })); },
   summary() {
     if (!this.req && !this.fail) return "";
     const avgTps = this.tpsN ? (this.tpsSum / this.tpsN).toFixed(1) : "-";
     const avgS = this.req ? (this.ms / this.req / 1000).toFixed(1) : "-";
-    return `${this.req} request · in ${this.inTok} / out ${this.outTok} tok · เฉลี่ย ${avgTps} tok/s · ${avgS} วิ/request` +
-      (this.fail ? ` · ล้มเหลว ${this.fail}` : "") + (this.parseBad ? ` · ตอบผิดรูปแบบ ${this.parseBad}` : "");
+    return tr("sum.main", { req: this.req, inTok: this.inTok, outTok: this.outTok, tps: avgTps, s: avgS }) +
+      (this.fail ? tr("sum.fail", { n: this.fail }) : "") + (this.parseBad ? tr("sum.parse", { n: this.parseBad }) : "");
   }
 };

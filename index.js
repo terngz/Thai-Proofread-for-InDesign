@@ -18,8 +18,13 @@ const GREEN = "ok";
 
 const BUILTIN_PRESETS = {
   strict_proofread: {
-    name: "Proofreader ไทย + อังกฤษ",
-    prompt: `คุณคือ "นักพิสูจน์อักษร" (Proofreader) ที่เชี่ยวชาญทั้งภาษาไทยและภาษาอังกฤษ ไม่ใช่บรรณาธิการ โดยมีหน้าที่ในการตรวจแต่ละภาษาทั้งไทยและอังกฤษ ตามเงื่อนไขของภาษานั้น ๆ เช่น ภาษาไทยใช้หลักของราชบัณฑิตยสถาน ส่วนภาษาอังกฤษใช้หลักของ Cambridge หรือ Oxford ก็ได้ โดยอิงจากบริบทในข้อความ หน้าที่คือ ตรวจหาคำผิด ชี้เฉพาะจุดที่มีคำที่สะกดผิด สะกดเกิน เจออักขระผิดตำแหน่ง เจอสระหรือวรรณยุกต์ซ็อน เป็นต้น ทำหน้าที่ ตรวจพิสูจน์อักษร ไม่ใช่หน้าที่ของบรรณาธิการ ห้ามปรับสำนวน ห้ามเรียบเรียงใหม่`
+    get name() { return tr("ps.builtinName"); },
+    // พรอมต์มาตรฐานมี 2 ภาษา ตามภาษาของ UI (uiLang)
+    prompts: {
+      th: `คุณคือ "นักพิสูจน์อักษร" (Proofreader) ที่เชี่ยวชาญทั้งภาษาไทยและภาษาอังกฤษ ไม่ใช่บรรณาธิการ โดยมีหน้าที่ในการตรวจแต่ละภาษาทั้งไทยและอังกฤษ ตามเงื่อนไขของภาษานั้น ๆ เช่น ภาษาไทยใช้หลักของราชบัณฑิตยสถาน ส่วนภาษาอังกฤษใช้หลักของ Cambridge หรือ Oxford ก็ได้ โดยอิงจากบริบทในข้อความ หน้าที่คือ ตรวจหาคำผิด ชี้เฉพาะจุดที่มีคำที่สะกดผิด สะกดเกิน เจออักขระผิดตำแหน่ง เจอสระหรือวรรณยุกต์ซ็อน เป็นต้น ทำหน้าที่ ตรวจพิสูจน์อักษร ไม่ใช่หน้าที่ของบรรณาธิการ ห้ามปรับสำนวน ห้ามเรียบเรียงใหม่`,
+      en: `You are a "Proofreader" fluent in both Thai and English, not an Editor. Your duty is to check each language (Thai and English) according to its respective guidelines—for example, following the standards of the Royal Society of Thailand for Thai, and Cambridge or Oxford standards for English, depending on the context of the text. Your role is to identify errors by pointing out specific instances of misspelled words, extra characters, misplaced characters, or overlapping vowels and tone marks. You act strictly as a proofreader, not an editor: do not alter the style or tone, and do not rewrite the text.`
+    },
+    get prompt() { return this.prompts[uiLang] || this.prompts.th; }
   }
 };
 
@@ -97,7 +102,7 @@ function getContents(o) {
 function visible(s) {
   let t = s.replace(/[\u200B-\u200D\u2060\uFEFF\uFFFD\uE000-\uF8FF]/g,
     (c) => "[U+" + c.charCodeAt(0).toString(16).toUpperCase().padStart(4, "0") + "]");
-  if (!t.trim()) t = "[เว้นวรรค " + s.length + " ตัว]";
+  if (!t.trim()) t = tr("v.space", { n: s.length });
   return t;
 }
 function wantText(t) { return (langs.th && THAI.test(t)) || (langs.en && /[A-Za-z]{3}/.test(t)); }
@@ -121,42 +126,42 @@ function runRules(text, opts) {
   };
 
   scanTh(/([\u0E30-\u0E3A\u0E40-\u0E4E])\1+/g, (m) => {
-    if (m[1] === "\u0E40" && m[0].length === 2) return add(m.index, m[0], "\u0E41", "เ สองตัวติดกัน (น่าจะเป็น แ)");
-    if (/[\u0E40-\u0E45]/.test(m[1])) return add(m.index, m[0], m[1], "อักขระซ้ำติดกัน");
-    ctx(m.index, m[0].length, m[1], "สระ/วรรณยุกต์ซ้ำติดกัน");
+    if (m[1] === "\u0E40" && m[0].length === 2) return add(m.index, m[0], "\u0E41", { k: "r.doubleE" });
+    if (/[\u0E40-\u0E45]/.test(m[1])) return add(m.index, m[0], m[1], { k: "r.dupChar" });
+    ctx(m.index, m[0].length, m[1], { k: "r.dupVowel" });
   });
 
   scanTh(/[\u0E31\u0E34-\u0E37\u0E47]{2}|[\u0E48-\u0E4B]{2}|[\u0E48-\u0E4B][\u0E31\u0E34-\u0E37]/g, (m) => {
     if (m[0][0] === m[0][1]) return;
-    ctx(m.index, m[0].length, null, "สระ/วรรณยุกต์ซ้อนกันผิดตำแหน่ง");
+    ctx(m.index, m[0].length, null, { k: "r.stacked" });
   });
 
-  scanTh(/\u0E4D\u0E32/g, (m) => ctx(m.index, 2, "\u0E33", "นิคหิต+สระอา ควรใช้สระอำ"));
+  scanTh(/\u0E4D\u0E32/g, (m) => ctx(m.index, 2, "\u0E33", { k: "r.nikhahit" }));
 
   scanTh(/(?:^|[^\u0E01-\u0E4E])[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g,
-    (m) => add(m.index, m[0], "", "สระ/วรรณยุกต์ลอย ไม่มีพยัญชนะนำหน้า"));
+    (m) => add(m.index, m[0], "", { k: "r.floating" }));
 
   scanTh(/[\u0E01-\u0E7F][A-Za-z][\u0E01-\u0E7F]/g,
-    (m) => add(m.index, m[0], "", "ตัวอักษรอังกฤษแทรกกลางคำไทย"));
+    (m) => add(m.index, m[0], "", { k: "r.latinInThai" }));
 
   scan(/[\uFFFD\uE000-\uF8FF\uFEFF\u200B-\u200D\u2060]/g, (m) => {
     const hex = "U+" + m[0].charCodeAt(0).toString(16).toUpperCase().padStart(4, "0");
     const hidden = /[\uFEFF\u200B-\u200D\u2060]/.test(m[0]);
-    add(m.index, m[0], "", (hidden ? "อักขระล่องหน " : "อักขระแปลกปลอม ") + hex);
+    add(m.index, m[0], "", { k: hidden ? "r.hidden" : "r.strange", p: { hex } });
   });
 
-  scanTh(/([\u0E01-\u0E2E])\1{2,}/g, (m) => add(m.index, m[0], m[1], "พยัญชนะซ้ำเกิน"));
+  scanTh(/([\u0E01-\u0E2E])\1{2,}/g, (m) => add(m.index, m[0], m[1], { k: "r.consRepeat" }));
 
   if (opts && opts.en) {
-    scan(/\b([A-Za-z]{2,})[ \t]+\1\b/gi, (m) => add(m.index, m[0], m[1], "คำอังกฤษซ้ำติดกัน"));
+    scan(/\b([A-Za-z]{2,})[ \t]+\1\b/gi, (m) => add(m.index, m[0], m[1], { k: "r.enDup" }));
   }
 
   if (opts && opts.spacing) {
     scanTh(/([\u0E01-\u0E45\u0E47-\u0E7F]{1,4})\u0E46/g,
-      (m) => add(m.index, m[0], m[1] + " \u0E46", "ไม้ยมกต้องเว้นวรรคหน้า"));
+      (m) => add(m.index, m[0], m[1] + " \u0E46", { k: "r.yamokBefore" }));
     scanTh(/\u0E46[\u0E01-\u0E45\u0E47-\u0E7F]/g,
-      (m) => add(m.index, m[0], "\u0E46 " + m[0][1], "ไม้ยมกต้องเว้นวรรคหลัง"));
-    scan(/ {2,}/g, (m) => add(m.index, m[0], " ", "เว้นวรรคซ้อน"));
+      (m) => add(m.index, m[0], "\u0E46 " + m[0][1], { k: "r.yamokAfter" }));
+    scan(/ {2,}/g, (m) => add(m.index, m[0], " ", { k: "r.dblSpace" }));
   }
   return out;
 }
@@ -214,12 +219,10 @@ function buildChunks(units) {
 }
 
 function buildUserMessage(text, marked) {
-  return `ตรวจพิสูจน์อักษรข้อความระหว่าง <<< และ >>> แล้วตอบเป็น JSON เท่านั้น ในรูปแบบ {"errors":[{"original":"...","suggestion":"...","issue":"..."}]}
-ถ้าไม่พบจุดผิดให้ตอบ {"errors":[]}
-
-<<<
-${text}
->>>`;
+  const head = uiLang === "en"
+    ? `Proofread the text between <<< and >>> and reply with JSON only, in this format: {"errors":[{"original":"...","suggestion":"...","issue":"..."}]}\nIf there are no errors, reply {"errors":[]}`
+    : `ตรวจพิสูจน์อักษรข้อความระหว่าง <<< และ >>> แล้วตอบเป็น JSON เท่านั้น ในรูปแบบ {"errors":[{"original":"...","suggestion":"...","issue":"..."}]}\nถ้าไม่พบจุดผิดให้ตอบ {"errors":[]}`;
+  return `${head}\n\n<<<\n${text}\n>>>`;
 }
 
 function parseModelJson(raw) {
@@ -369,7 +372,7 @@ function collectUnits(scope) {
   if (scope === "page") {
     let page = null;
     try { page = app.activeWindow.activePage; } catch (e) { }
-    if (!page) throw new Error("ไม่พบหน้าปัจจุบัน (ต้องอยู่ในมุมมอง Layout)");
+    if (!page) throw new Error(tr("e.noPage"));
     const items = page.allPageItems;
     for (let i = 0; i < items.length; i++) {
       if (cname(items[i]) === "TextFrame") addText(items[i], "f");
@@ -380,7 +383,7 @@ function collectUnits(scope) {
   } else {
     const sel = app.selection;
     if (!sel || sel.length === 0) {
-      throw new Error("ยังไม่ได้เลือกอะไร: คลิกในกรอบข้อความ / เลือกกรอบ");
+      throw new Error(tr("e.noSel"));
     }
     for (let i = 0; i < sel.length; i++) {
       const item = sel[i];
@@ -425,8 +428,8 @@ function locate(pos) {
   const unit = pos.unit;
   const expected = unit.text.substr(pos.start, pos.len);
   let cur;
-  try { cur = getContents(unit.obj); } catch (e) { return { err: "ข้อความต้นทางถูกลบ/เปลี่ยนไปแล้ว" }; }
-  if (cur !== unit.text) return { err: "ข้อความในเอกสารเปลี่ยนไปแล้ว" };
+  try { cur = getContents(unit.obj); } catch (e) { return { err: tr("e.srcGone") }; }
+  if (cur !== unit.text) return { err: tr("e.docChanged") };
   try {
     const r = unit.obj.characters.itemByRange(pos.start, pos.start + pos.len - 1);
     if (getContents(r) === expected) return { range: r };
@@ -435,7 +438,7 @@ function locate(pos) {
     const r = findFirst(unit.obj, expected);
     if (r) return { range: r };
   } catch (e) { }
-  return { err: "หาตำแหน่งในเอกสารไม่เจอ" };
+  return { err: tr("e.notFound") };
 }
 
 function goTo(f, btn) {
@@ -458,12 +461,12 @@ function goTo(f, btn) {
       } catch (e) { }
     }
     app.select(res.range);
-    if (!pageObj) setStatus("ข้อความนี้อยู่ในส่วนที่ล้นกรอบ (overset)", RED);
-    else setStatus(`เลือกคำแล้ว · หน้า ${pageObj.name}`);
+    if (!pageObj) setStatus(tr("e.overset"), RED);
+    else setStatus(tr("e.selected", { page: pageObj.name }));
   } catch (e) {
-    setStatus("เลือกข้อความไม่สำเร็จ: " + (e.message || e), RED);
+    setStatus(tr("e.selectFail") + (e.message || e), RED);
   }
-  if (btn && n > 1) btn.textContent = `ไปที่จุดนี้ (${idx + 1}/${n})`;
+  if (btn && n > 1) btn.textContent = tr("go.btnIdx", { i: idx + 1, n });
 }
 
 function pageOfFrame(tf) {
@@ -495,10 +498,10 @@ function pageLabel(f) {
   const names = [];
   f.positions.forEach((p) => {
     const pg = resolvePage(p);
-    const n = pg ? pg.name : "ล้นกรอบ";
+    const n = pg ? pg.name : tr("pg.overset");
     if (names.indexOf(n) < 0) names.push(n);
   });
-  return "หน้า " + names.slice(0, 4).join(", ");
+  return tr("pg.label", { names: names.slice(0, 4).join(", ") });
 }
 
 function makeFinding(kind, original, suggestion, issue, positions) {
@@ -516,13 +519,13 @@ function makeBtn(label, cls, onClick) {
   return b;
 }
 
-const TAG_LABEL = { rule: "กฎ", cand: "สงสัย", svc: "สะกด", ai: "AI" };
+const TAG_KEY = { rule: "tag.rule", cand: "tag.cand", svc: "tag.svc", ai: "tag.ai" };
 
 function buildCard(f) {
   const card = el("div", "card");
 
   const top = el("div", "card-top");
-  top.appendChild(el("span", "tag tag-" + f.kind, TAG_LABEL[f.kind] || "AI"));
+  top.appendChild(el("span", "tag tag-" + f.kind, tr(TAG_KEY[f.kind] || "tag.ai")));
   top.appendChild(el("span", "card-page", pageLabel(f)));
   card.appendChild(top);
 
@@ -534,19 +537,21 @@ function buildCard(f) {
   }
   card.appendChild(word);
 
-  if (f.issue && f.issue !== "สะกดผิด") card.appendChild(el("div", "issue", f.issue));
+  // f.issue เป็น {k,p} (กฎ/คำน่าสงสัย) หรือข้อความจากบริการ/AI ("สะกดผิด" = ค่าทั่วไป ไม่ต้องแสดง)
+  const issueText = f.issue && typeof f.issue === "object" ? tr(f.issue.k, f.issue.p) : f.issue;
+  if (issueText && issueText !== "สะกดผิด") card.appendChild(el("div", "issue", issueText));
 
   const n = f.positions.length;
   const main = el("div", "card-actions");
-  const goBtn = makeBtn("ไปที่จุดนี้" + (n > 1 ? ` (${n})` : ""), "", () => goTo(f, goBtn));
+  const goBtn = makeBtn(tr("go.btn") + (n > 1 ? ` (${n})` : ""), "", () => goTo(f, goBtn));
   main.appendChild(goBtn);
-  if (f.suggestion) main.appendChild(makeBtn("แก้เลย", "btn-accent", () => applyFix(f, false)));
+  if (f.suggestion) main.appendChild(makeBtn(tr("card.fix"), "btn-accent", () => applyFix(f, false)));
   card.appendChild(main);
 
   const more = el("div", "card-more");
-  if (f.suggestion && n > 1) more.appendChild(makeBtn(`แก้ทั้งหมด (${n})`, "btn-text", () => applyFix(f, true)));
-  more.appendChild(makeBtn("แก้แล้ว", "btn-text", () => { f.hidden = true; renderFindings(); }));
-  more.appendChild(makeBtn("ละเว้น", "btn-text", () => {
+  if (f.suggestion && n > 1) more.appendChild(makeBtn(tr("card.fixAll", { n }), "btn-text", () => applyFix(f, true)));
+  more.appendChild(makeBtn(tr("card.done"), "btn-text", () => { f.hidden = true; renderFindings(); }));
+  more.appendChild(makeBtn(tr("card.ignore"), "btn-text", () => {
     ignoreSet.add(f.original);
     lsSet(K_IGNORE, Array.from(ignoreSet));
     f.hidden = true;
@@ -590,9 +595,9 @@ function replaceAt(pos, replacement) {
   const unit = pos.unit;
   const before = unit.text;
   const want = before.slice(0, pos.start) + replacement + before.slice(pos.start + pos.len);
-  try { res.range.contents = replacement; } catch (e) { return { err: "แก้ข้อความไม่สำเร็จ: " + (e.message || e) }; }
+  try { res.range.contents = replacement; } catch (e) { return { err: tr("fix.failed") + (e.message || e) }; }
   let now;
-  try { now = getContents(unit.obj); } catch (e) { return { err: "อ่านข้อความหลังแก้ไม่ได้" }; }
+  try { now = getContents(unit.obj); } catch (e) { return { err: tr("fix.readFail") }; }
   const drift = now !== want;
   unit.text = now;
   adjustAfterEdit(unit, pos, replacement.length, drift);
@@ -600,7 +605,7 @@ function replaceAt(pos, replacement) {
 }
 
 function applyFix(f, all) {
-  if (!f.suggestion) return setStatus("ไม่มีคำแนะนำให้แก้", RED);
+  if (!f.suggestion) return setStatus(tr("fix.none"), RED);
   let targets = all ? f.positions.slice() : [f.positions[f.lastIdx !== undefined && f.lastIdx < f.positions.length ? f.lastIdx : 0]];
   targets.sort((a, b) => (a.unit === b.unit ? b.start - a.start : a.unit.idx - b.unit.idx));
   const original = f.original, suggestion = f.suggestion;
@@ -612,10 +617,10 @@ function applyFix(f, all) {
       done++;
       if (r.drift) drift = true;
     }
-  }, "AI Proofreader: แก้คำผิด");
+  }, tr("fix.undoLabel"));
   renderFindings();
-  if (err) return setStatus((done ? `แก้แล้ว ${done} จุด แต่ ` : "") + err, RED);
-  setStatus(`แก้ "${original}" เป็น "${suggestion}" แล้ว ${done} จุด`, GREEN);
+  if (err) return setStatus((done ? tr("fix.partial", { done }) : "") + err, RED);
+  setStatus(tr("fix.ok", { o: original, s: suggestion, n: done }), GREEN);
 }
 
 let renderTimer = null;
@@ -637,17 +642,17 @@ function renderSoon() {
 }
 
 function resetCheck() {
-  if (running) return setStatus('กำลังตรวจอยู่ กด "หยุด" ก่อน แล้วค่อยล้าง', RED);
+  if (running) return setStatus(tr("rst.running"), RED);
   findings = [];
   renderFindings();
   progressEnd();
   Tele.reset();
   renderStats();
-  setStatus("สถานะ: พร้อมใช้งาน");
+  setStatus(tr("status.ready"));
 }
 
 function updateIgnoreLabel() {
-  if ($("btnClearIgnore")) $("btnClearIgnore").textContent = `ล้างรายการคำที่ละเว้น (${ignoreSet.size})`;
+  if ($("btnClearIgnore")) $("btnClearIgnore").textContent = tr("foot.ignore", { n: ignoreSet.size });
 }
 
 function toggleRunning(on) {
@@ -669,7 +674,7 @@ function progressRender() {
   const pct = live.total ? Math.round((live.done / live.total) * 100) : 0;
   if ($("progressFill")) $("progressFill").style.width = pct + "%";
   const sec = (Date.now() - live.t0) / 1000;
-  if ($("progressText")) $("progressText").textContent = `${live.label} ${live.done}/${live.total} (${pct}%) · ผ่านไป ${Math.round(sec)} วิ`;
+  if ($("progressText")) $("progressText").textContent = tr("prog.text", { label: live.label, done: live.done, total: live.total, pct, sec: Math.round(sec) });
 }
 
 function progressEnd() {
@@ -734,7 +739,7 @@ function applyItems(items, chunkUnits, kind, ctx) {
  * ============================================================ */
 async function runCheck() {
   if (running) return;
-  if (app.documents.length === 0) return setStatus("กรุณาเปิดเอกสาร InDesign ก่อน", RED);
+  if (app.documents.length === 0) return setStatus(tr("run.noDoc"), RED);
 
   const engineMode = typeof getSelectedEngineMode === "function" ? getSelectedEngineMode() : "pythainlp";
   const useRules = $("chkRules") ? $("chkRules").checked : true;
@@ -745,26 +750,26 @@ async function runCheck() {
   const scope = $("scopeSelect") ? $("scopeSelect").value : "selection";
   langs = { th: $("chkTH") ? $("chkTH").checked : true, en: $("chkEN") ? $("chkEN").checked : true };
 
-  if (!langs.th && !langs.en) return setStatus("เลือกภาษาที่จะตรวจอย่างน้อย 1 ภาษา", RED);
+  if (!langs.th && !langs.en) return setStatus(tr("run.noLang"), RED);
 
   let units;
   try { units = collectUnits(scope); } catch (e) { return setStatus("" + (e.message || e), RED); }
   units = units.filter((u) => wantText(u.text));
-  if (!units.length) return setStatus("ไม่พบข้อความที่จะตรวจในขอบเขตที่เลือก", RED);
+  if (!units.length) return setStatus(tr("run.noText"), RED);
 
   if (useAI) {
     const profile = activeProfile();
     const pr = presetOf(profile);
-    if (!profile.baseUrl) return setStatus("ยังไม่ได้ตั้ง Base URL สำหรับ AI", RED);
-    if (pr.needsKey && !keyCache[profile.id]) return setStatus(`ยังไม่ได้ใส่ API key ของ "${profile.name}"`, RED);
+    if (!profile.baseUrl) return setStatus(tr("run.noBase"), RED);
+    if (pr.needsKey && !keyCache[profile.id]) return setStatus(tr("run.noKey", { name: profile.name }), RED);
   }
 
   if (useService) {
     const svcUrl = $("serviceUrl") ? $("serviceUrl").value.trim() : "";
-    if (!svcUrl) return setStatus("กรุณากรอก URL บริการตรวจสะกด PyThaiNLP", RED);
-    setStatus("กำลังเชื่อมต่อบริการ PyThaiNLP...");
+    if (!svcUrl) return setStatus(tr("run.noSvcUrl"), RED);
+    setStatus(tr("run.svcConnecting"));
     try { await serviceHealth(svcUrl); } catch (e) {
-      return setStatus("ยังไม่ได้รันบริการ PyThaiNLP: เปิด spellcheck_server.py ก่อน (กด ? ในส่วนเครื่องมือตรวจหลักเพื่อดูวิธี) แล้วลองใหม่", RED);
+      return setStatus(tr("run.svcDown"), RED);
     }
   }
 
@@ -794,7 +799,7 @@ async function runCheck() {
     if (useService && !cancelled) {
       const svcUrl = $("serviceUrl") ? $("serviceUrl").value.trim() : "";
       const sc = buildChunks(units);
-      setStatus("กำลังตรวจสะกดด้วย PyThaiNLP...");
+      setStatus(tr("run.svcChecking"));
       progressStart(sc.length, "PyThaiNLP");
 
       for (let i = 0; i < sc.length; i++) {
@@ -806,7 +811,7 @@ async function runCheck() {
           console.warn("Service check error", e);
           if (e && (e.network || e.timeout)) {
             progressEnd();
-            return setStatus("บริการ PyThaiNLP หยุดตอบระหว่างตรวจ: ตรวจว่า spellcheck_server.py ยังรันอยู่หรือไม่", RED);
+            return setStatus(tr("run.svcLost"), RED);
           }
         }
         if (live) live.done++;
@@ -818,10 +823,10 @@ async function runCheck() {
       const useCand = $("chkCandPy") ? $("chkCandPy").checked : false;
       if (useCand && segmenter && (dictAvailable() || enDictAvailable())) {
         const CAND_KIND = {
-          oov: "ไม่พบในพจนานุกรม (อาจพิมพ์ผิด หรือเป็นชื่อเฉพาะ/คำใหม่)",
-          dup: "คำซ้ำติดกัน",
-          mixed: "ไทยปนอังกฤษในคำเดียว",
-          en: "ไม่พบในพจนานุกรมอังกฤษ"
+          oov: { k: "c.oov" },
+          dup: { k: "c.dup" },
+          mixed: { k: "c.mixed" },
+          en: { k: "c.en" }
         };
 
         const occupied = new Set();
@@ -837,7 +842,7 @@ async function runCheck() {
               const ok = u.idx + ":" + c.start;
               if (!occupied.has(ok)) {
                 occupied.add(ok);
-                const f = makeFinding("cand", word, "", CAND_KIND[c.kind] || "จุดน่าสงสัย", [{ unit: u, start: c.start, len: c.end - c.start }]);
+                const f = makeFinding("cand", word, "", CAND_KIND[c.kind] || { k: "c.generic" }, [{ unit: u, start: c.start, len: c.end - c.start }]);
                 findings.push(f);
               }
             }
@@ -857,7 +862,7 @@ async function runCheck() {
       const aiChunks = buildChunks(units);
       const total = aiChunks.length;
 
-      setStatus(`AI (${profile.name}) กำลังตรวจ ${total} ช่วง...`);
+      setStatus(tr("run.aiChecking", { name: profile.name, total }));
       progressStart(total, "AI Engine");
 
       const systemPrompt = $("systemPrompt") ? $("systemPrompt").value.trim() : "";
@@ -881,11 +886,11 @@ async function runCheck() {
         if (live) live.busy++;
         try {
           const r = await providerComplete(profile, req);
-          Tele.ok(r, `ช่วง ${i + 1}/${total}`);
+          Tele.ok(r, tr("tele.chunk", { i: i + 1, total }));
           const items = parseModelJson(r.text);
           if (items) applyItems(items, chunk.units, "ai", ctx);
         } catch (e) {
-          Tele.failed(`ช่วง ${i + 1}/${total}`, friendlyError(e, profile));
+          Tele.failed(tr("tele.chunk", { i: i + 1, total }), friendlyError(e, profile));
         } finally {
           if (live) { live.busy--; live.done++; }
           renderSoon();
@@ -906,9 +911,9 @@ async function runCheck() {
 
   const visibleCount = findings.filter((f) => !f.hidden).length;
   if (visibleCount === 0) {
-    setStatus("ไม่พบจุดผิด", GREEN);
+    setStatus(tr("run.none"), GREEN);
   } else {
-    setStatus(`พบ ${visibleCount} จุด`, GREEN);
+    setStatus(tr("run.found", { n: visibleCount }), GREEN);
   }
 }
 
@@ -957,7 +962,7 @@ function renderPresetOptions(selectedKey) {
 
 function disarmDelete() {
   deleteArmedKey = null;
-  if ($("btnDeletePreset")) $("btnDeletePreset").textContent = "ลบ";
+  if ($("btnDeletePreset")) $("btnDeletePreset").textContent = tr("btn.delete");
 }
 
 function initPresets() {
@@ -982,24 +987,24 @@ function initPresets() {
     $("btnSavePreset").addEventListener("click", () => {
       const prompt = $("systemPrompt") ? $("systemPrompt").value.trim() : "";
       const name = $("presetName") ? $("presetName").value.trim() : "";
-      if (!prompt) return setStatus("ยังไม่มีข้อความ System Instruction ให้บันทึก", RED);
-      if (!name) return setStatus("พิมพ์ชื่อ Preset ในช่องก่อนกดบันทึก", RED);
+      if (!prompt) return setStatus(tr("ps.noPrompt"), RED);
+      if (!name) return setStatus(tr("ps.noName"), RED);
       const key = "custom_" + Date.now();
       customPresets[key] = { name, prompt };
       lsSet(K_PRESETS, customPresets);
       renderPresetOptions(key);
       if ($("presetName")) $("presetName").value = "";
-      setStatus("บันทึก Preset แล้ว", GREEN);
+      setStatus(tr("ps.saved"), GREEN);
     });
   }
 
   if ($("btnDeletePreset")) {
     $("btnDeletePreset").addEventListener("click", () => {
       const key = $("presetSelect") ? $("presetSelect").value : "";
-      if (BUILTIN_PRESETS[key]) return setStatus("ลบ Preset มาตรฐานไม่ได้", RED);
+      if (BUILTIN_PRESETS[key]) return setStatus(tr("ps.noDeleteBuiltin"), RED);
       if (deleteArmedKey !== key) {
         deleteArmedKey = key;
-        $("btnDeletePreset").textContent = "ยืนยัน?";
+        $("btnDeletePreset").textContent = tr("btn.confirm");
         setTimeout(() => { if (deleteArmedKey === key) disarmDelete(); }, 3000);
         return;
       }
@@ -1007,7 +1012,7 @@ function initPresets() {
       lsSet(K_PRESETS, customPresets);
       disarmDelete();
       renderPresetOptions("strict_proofread");
-      setStatus("ลบ Preset แล้ว");
+      setStatus(tr("ps.deleted"));
     });
   }
 }
@@ -1027,13 +1032,59 @@ document.addEventListener("click", (e) => {
   if (!inside) showPanel(null);
 });
 
-if ($("btnOpenGithub")) {
-  $("btnOpenGithub").addEventListener("click", () => {
-    shell.openExternal("https://github.com/terngz/indesign-thaiproofread");
+if ($("btnOpenChangelog")) {
+  $("btnOpenChangelog").addEventListener("click", () => {
+    shell.openExternal("https://github.com/terngz/indesign-thaiproofread/blob/main/CHANGELOG.md");
   });
 }
 
-function init() { 
+if ($("btnOpenGithub")) {
+  $("btnOpenGithub").addEventListener("click", () => {
+    shell.openExternal("https://github.com/terngz/indesign-thaiproofread/blob/main/README.md");
+  });
+}
+
+// ----- ภาษาของหน้าจอ -----
+function updateLangButtons() {
+  ["th", "en"].forEach((l) => {
+    const b = $("lang" + l.toUpperCase());
+    if (b) b.classList.toggle("active", uiLang === l);
+  });
+}
+
+function syncReadyStatus() {
+  const s = $("status");
+  if (s && (s.textContent === I18N.th["status.ready"] || s.textContent === I18N.en["status.ready"])) s.textContent = tr("status.ready");
+}
+
+function onUiLangChange(lang) {
+  // จำไว้ก่อนสลับ: ข้อความในช่อง prompt ยังเป็นพรอมต์มาตรฐาน (ไม่ได้แก้) หรือไม่
+  const sel = $("presetSelect");
+  const box = $("systemPrompt");
+  const cur = sel ? sel.value : "";
+  const stock = BUILTIN_PRESETS[cur] ? Object.keys(BUILTIN_PRESETS[cur].prompts).map((l) => BUILTIN_PRESETS[cur].prompts[l]) : [];
+  const keepTyped = !!(box && stock.indexOf(box.value) < 0);
+  const typed = box ? box.value : "";
+
+  setUiLang(lang);
+  updateLangButtons();
+  syncReadyStatus();
+  updateIgnoreLabel();
+  renderFindings();
+
+  if (sel) {
+    renderPresetOptions(cur);                       // เปลี่ยนชื่อ Preset + โหลดพรอมต์ของภาษาใหม่
+    if (box && keepTyped) box.value = typed;        // ถ้าผู้ใช้แก้เอง ไม่ทับ
+  }
+  disarmDelete();
+  refreshLangUI();
+}
+
+function init() {
+  applyI18n();
+  updateLangButtons();
+  if ($("langTH")) $("langTH").addEventListener("click", () => onUiLangChange("th"));
+  if ($("langEN")) $("langEN").addEventListener("click", () => onUiLangChange("en"));
   initAccordions();
   ignoreSet = new Set(lsGet(K_IGNORE, []));
 
@@ -1048,13 +1099,13 @@ function init() {
       ignoreSet.clear();
       lsSet(K_IGNORE, []);
       updateIgnoreLabel();
-      setStatus("ล้างรายการคำที่ละเว้นแล้ว");
+      setStatus(tr("ign.cleared"));
     });
   }
 
   if ($("btnCheck")) $("btnCheck").addEventListener("click", runCheck);
   if ($("btnResetAll")) $("btnResetAll").addEventListener("click", resetCheck);
-  if ($("btnCancel")) $("btnCancel").addEventListener("click", () => { cancelled = true; setStatus("กำลังหยุด..."); });
+  if ($("btnCancel")) $("btnCancel").addEventListener("click", () => { cancelled = true; setStatus(tr("run.stopping")); });
 }
 
 init();

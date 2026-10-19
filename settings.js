@@ -50,14 +50,9 @@ function getSelectedEngineMode() {
   return "ai";
 }
 
-const ENGINE_DESC = {
-  pythainlp: "ตรวจสะกดและตัดคำด้วย PyThaiNLP ในเครื่อง ออฟไลน์ เร็ว (ต้องรัน spellcheck_server.py)",
-  ai: "ตรวจตามบริบทได้แม่นกว่า เลือกใช้ Local AI หรือ Cloud API"
-};
-
 function syncEngineModeUI() {
   const mode = getSelectedEngineMode();
-  if ($("engineDesc")) $("engineDesc").textContent = ENGINE_DESC[mode];
+  if ($("engineDesc")) $("engineDesc").textContent = tr(mode === "ai" ? "eng.ai" : "eng.pythainlp");
   const pyBox = $("pythainlpConfigBox");
   const aiBox = $("aiConfigBox");
   const candRow = $("chkCandPyRow");
@@ -89,19 +84,19 @@ function updateConnHints(presetId) {
   const pr = PROVIDER_PRESETS[presetId] || PROVIDER_PRESETS.custom;
   if ($("connLmNativeRow")) $("connLmNativeRow").style.display = presetId === "lmstudio" ? "flex" : "none";
   if ($("connCloudRow")) $("connCloudRow").style.display = pr.cloud ? "block" : "none";
-  if ($("connKeyLabel")) $("connKeyLabel").textContent = pr.needsKey ? "API KEY (จำเป็น)" : "API KEY (ถ้ามี)";
+  if ($("connKeyLabel")) $("connKeyLabel").textContent = pr.needsKey ? tr("key.required") : tr("key.optional");
   if ($("connThinkNote")) $("connThinkNote").textContent = thinkNote(presetId);
   if ($("connThinkBudgetBox")) $("connThinkBudgetBox").style.display = presetId === "anthropic" ? "block" : "none";
 }
 
-function updateKeyNote(profile) {
+function updateKeyNote(profile, keepValue) {
   const has = !!keyCache[profile.id];
   if ($("connKey")) {
-    $("connKey").value = "";
-    $("connKey").setAttribute("placeholder", has ? "(บันทึกไว้แล้ว พิมพ์ใหม่เพื่อเปลี่ยน)" : "วาง API key ที่นี่");
+    if (!keepValue) $("connKey").value = "";
+    $("connKey").setAttribute("placeholder", has ? tr("key.phSaved") : tr("conn.keyPh"));
   }
-  const mode = KeyStore.mode === "secure" ? "เก็บในที่เก็บความลับของ UXP"
-    : KeyStore.mode === "plain" ? "เก็บแบบไม่เข้ารหัสในเครื่องนี้" : "";
+  const mode = KeyStore.mode === "secure" ? tr("key.secure")
+    : KeyStore.mode === "plain" ? tr("key.plain") : "";
   if ($("connKeyNote")) $("connKeyNote").textContent = has && mode ? mode : "";
 }
 
@@ -151,13 +146,13 @@ function getTestProfile() {
   tmp.id = "tmp";
   keyCache["tmp"] = ($("connKey") && $("connKey").value.trim()) || keyCache[p.id] || "";
   delete capsByProfile["tmp"];
-  if (!tmp.baseUrl) { showConnResult("กรอก Base URL ก่อน", "err"); return null; }
-  if (presetOf(tmp).needsKey && !keyCache["tmp"]) { showConnResult("ผู้ให้บริการนี้ต้องใช้ API key", "err"); return null; }
+  if (!tmp.baseUrl) { showConnResult(tr("val.noUrl"), "err"); return null; }
+  if (presetOf(tmp).needsKey && !keyCache["tmp"]) { showConnResult(tr("val.needKey"), "err"); return null; }
   return tmp;
 }
 
 function refreshHeader() {
-  if ($("accModelTitle")) $("accModelTitle").textContent = "โมเดล AI · " + activeProfile().name;
+  if ($("accModelTitle")) $("accModelTitle").textContent = tr("mdl.title", { name: activeProfile().name });
 }
 
 function renderProfileSelect() {
@@ -177,11 +172,11 @@ function updateModelInfo() {
   box.className = "";
   if (!m) { box.textContent = ""; return; }
   const parts = [];
-  if (m.ctx) parts.push("context " + m.ctx + (m.maxCtx && m.maxCtx !== m.ctx ? " (สูงสุด " + m.maxCtx + ")" : ""));
+  if (m.ctx) parts.push("context " + m.ctx + (m.maxCtx && m.maxCtx !== m.ctx ? tr("info.max", { max: m.maxCtx }) : ""));
   if (m.quant) parts.push(m.quant);
-  if (m.loaded === true) parts.push("โหลดอยู่");
-  if (m.reasoning === true) parts.push("รองรับ reasoning");
-  if (m.reasoning === false) parts.push("ไม่รองรับ reasoning");
+  if (m.loaded === true) parts.push(tr("info.loaded"));
+  if (m.reasoning === true) parts.push(tr("info.reasoning"));
+  if (m.reasoning === false) parts.push(tr("info.noReasoning"));
   box.textContent = parts.join(" · ");
 }
 
@@ -192,33 +187,33 @@ async function refreshModels() {
   const add = (v, t) => { const o = el("option", "", t); o.value = v; sel.appendChild(o); };
   sel.innerHTML = "";
   if (presetOf(p).needsKey && !keyCache[p.id]) {
-    add(p.model || "", p.model ? p.model + " (พิมพ์เอง)" : "ยังไม่ได้ใส่ API key (กด ตั้งค่า)");
-    setHealth("", "ยังไม่ได้ใส่ API key");
+    add(p.model || "", p.model ? p.model + " " + tr("list.custom") : tr("list.needKey"));
+    setHealth("", tr("health.noKey"));
     modelMeta = {};
     updateModelInfo();
     return;
   }
-  add("", "กำลังโหลดรายชื่อโมเดล...");
+  add("", tr("list.loading"));
   try {
     const r = await providerListModels(p);
     modelMeta = r.meta || {};
     sel.innerHTML = "";
     if (!r.ids.length) {
-      add(p.model || "", p.model ? p.model + " (พิมพ์เอง)" : "ไม่พบโมเดล (Load โมเดลใน LM Studio ก่อน)");
+      add(p.model || "", p.model ? p.model + " " + tr("list.custom") : tr("list.none"));
     } else {
-      if (!p.model || r.ids.indexOf(p.model) < 0) add("", "- เลือกโมเดล -");
+      if (!p.model || r.ids.indexOf(p.model) < 0) add("", tr("list.pick"));
       r.ids.forEach((id) => add(id, id));
-      if (p.model && r.ids.indexOf(p.model) < 0) add(p.model, p.model + " (พิมพ์เอง)");
+      if (p.model && r.ids.indexOf(p.model) < 0) add(p.model, p.model + " " + tr("list.custom"));
       if (p.model) sel.value = p.model;
       else if (!presetOf(p).cloud) { sel.value = r.ids[0]; p.model = r.ids[0]; saveProfiles(); if ($("connModel")) $("connModel").value = p.model; }
     }
-    setHealth("ok", `เชื่อมต่อได้ (${r.ms} ms, ${r.ids.length} โมเดล)`);
+    setHealth("ok", tr("health.ok", { ms: r.ms, n: r.ids.length }));
     updateModelInfo();
   } catch (e) {
     modelMeta = {};
     updateModelInfo();
     sel.innerHTML = "";
-    add(p.model || "", p.model ? p.model + " (พิมพ์เอง)" : "เชื่อมต่อไม่ได้");
+    add(p.model || "", p.model ? p.model + " " + tr("list.custom") : tr("list.fail"));
     if (p.model) sel.value = p.model;
     setHealth("bad", friendlyError(e, p));
   }
@@ -234,24 +229,24 @@ async function saveConn() {
   renderProfileSelect();
   refreshHeader();
   updateKeyNote(p);
-  showConnResult("บันทึกแล้ว", "ok");
+  showConnResult(tr("conn.saved"), "ok");
   await refreshModels();
 }
 
 async function testConn() {
   const tmp = getTestProfile();
   if (!tmp) return;
-  showConnResult("กำลังทดสอบการเชื่อมต่อ...", "");
+  showConnResult(tr("conn.testing"), "");
   try {
     const r = await providerListModels(tmp);
-    setHealth("ok", `เชื่อมต่อได้ (${r.ms} ms)`);
-    showConnResult(`เชื่อมต่อได้ · ${r.ms} ms · พบ ${r.ids.length} โมเดล`, "ok");
-    Tele.add(`ทดสอบการเชื่อมต่อ ${tmp.name}: OK ${r.ms} ms`);
+    setHealth("ok", tr("health.okMs", { ms: r.ms }));
+    showConnResult(tr("conn.okFull", { ms: r.ms, n: r.ids.length }), "ok");
+    Tele.add(tr("tele.connOk", { name: tmp.name, ms: r.ms }));
   } catch (e) {
     const msg = friendlyError(e, tmp);
     setHealth("bad", msg);
     showConnResult(msg, "err");
-    Tele.add(`ทดสอบการเชื่อมต่อ ${tmp.name}: ล้มเหลว`);
+    Tele.add(tr("tele.connFail", { name: tmp.name }));
   }
 }
 
@@ -265,8 +260,8 @@ const SELFTEST_EXPECT = [
 async function selfTest() {
   const tmp = getTestProfile();
   if (!tmp) return;
-  if (!tmp.model && presetOf(tmp).cloud) { showConnResult("เลือกหรือพิมพ์ชื่อโมเดลก่อน", "err"); return; }
-  showConnResult("กำลังทดสอบโมเดล...", "");
+  if (!tmp.model && presetOf(tmp).cloud) { showConnResult(tr("st.pickModel"), "err"); return; }
+  showConnResult(tr("st.running"), "");
   const req = {
     system: $("systemPrompt") ? $("systemPrompt").value.trim() : "",
     user: buildUserMessage(SELFTEST_TEXT, false),
@@ -276,17 +271,17 @@ async function selfTest() {
     const r = await providerComplete(tmp, req);
     Tele.ok(r, "self-test");
     const items = parseModelJson(r.text);
-    const speed = ` · ${(r.ms / 1000).toFixed(1)} วิ` + (r.tps ? ` · ${r.tps.toFixed(1)} tok/s` : "");
+    const speed = tr("st.sec", { s: (r.ms / 1000).toFixed(1) }) + (r.tps ? ` · ${r.tps.toFixed(1)} tok/s` : "");
     if (items === null) {
       Tele.parseBad++;
-      setHealth("bad", "โมเดลตอบไม่เป็น JSON");
-      showConnResult("โมเดลตอบแต่ไม่เป็น JSON ตามรูปแบบ" + speed, "err");
+      setHealth("bad", tr("st.notJson"));
+      showConnResult(tr("st.notJsonLong") + speed, "err");
       return;
     }
     const hits = SELFTEST_EXPECT.map((x) => ({ label: x[0], ok: items.some((it) => it && typeof it.original === "string" && x[1](it.original)) }));
     const got = hits.filter((h) => h.ok).length;
-    setHealth("ok", `ทดสอบโมเดลผ่าน (${got}/${hits.length})`);
-    showConnResult(`จับได้ ${got}/${hits.length}: ` + hits.map((h) => h.label + (h.ok ? " (ได้)" : " (ไม่ได้)")) .join(", ") + speed, got === hits.length ? "ok" : "err");
+    setHealth("ok", tr("st.pass", { got, n: hits.length }));
+    showConnResult(tr("st.caught", { got, n: hits.length }) + hits.map((h) => h.label + (h.ok ? tr("st.yes") : tr("st.no"))) .join(", ") + speed, got === hits.length ? "ok" : "err");
   } catch (e) {
     const msg = friendlyError(e, tmp);
     setHealth("bad", msg);
@@ -321,16 +316,16 @@ async function testService() {
   const out = $("serviceResult");
   if (!out) return;
   out.className = "";
-  out.textContent = "กำลังเชื่อมต่อ...";
+  out.textContent = tr("svc.connecting");
   try {
     const t0 = Date.now();
     const h = await serviceHealth(url);
     out.className = "ok";
-    out.textContent = `พร้อมใช้งาน · ${Date.now() - t0} ms` + (h && h.pythainlp ? ` · PyThaiNLP ${h.pythainlp}` : "");
-    Tele.add("ทดสอบบริการตรวจสะกด: OK");
+    out.textContent = tr("svc.ready", { ms: Date.now() - t0 }) + (h && h.pythainlp ? ` · PyThaiNLP ${h.pythainlp}` : "");
+    Tele.add(tr("tele.svcOk"));
   } catch (e) {
     out.className = "err";
-    out.textContent = e && e.network ? "เชื่อมต่อไม่ได้ (รัน spellcheck_server.py หรือยัง?)" : friendlyError(e, { name: "บริการตรวจสะกด", baseUrl: url });
+    out.textContent = e && e.network ? tr("svc.cannot") : friendlyError(e, { name: tr("svc.name"), baseUrl: url });
   }
 }
 
@@ -353,7 +348,7 @@ function onPresetChange() {
   const id = $("connPreset").value;
   const pr = PROVIDER_PRESETS[id] || PROVIDER_PRESETS.custom;
   const name = $("connName").value.trim();
-  const isDefaultName = !name || name === NEW_PROFILE_NAME ||
+  const isDefaultName = !name || isNewProfileName(name) || name === I18N.th["prov.custom"] || name === I18N.en["prov.custom"] ||
     Object.keys(PROVIDER_PRESETS).some((k) => PROVIDER_PRESETS[k].label === name);
   if (isDefaultName) $("connName").value = pr.label;
   $("connUrl").value = pr.baseUrl;
@@ -363,29 +358,29 @@ function onPresetChange() {
   updateConnHints(id);
 }
 
-const NEW_PROFILE_NAME = "โปรไฟล์ใหม่";
+const isNewProfileName = (n) => n === I18N.th["prof.newName"] || n === I18N.en["prof.newName"];
 
 async function newProfile() {
-  const p = makeProfile("custom", NEW_PROFILE_NAME);
+  const p = makeProfile("custom", tr("prof.newName"));
   ProfileStore.list.push(p);
   ProfileStore.active = p.id;
   saveProfiles();
   renderProfileSelect();
   await switchProfile(p.id);
-  showConnResult("เลือกผู้ให้บริการ แล้วกดบันทึก", "");
+  showConnResult(tr("prof.pickProvider"), "");
 }
 
 async function deleteProfile() {
   const btn = $("btnConnDelete");
-  if (ProfileStore.list.length <= 1) return showConnResult("ต้องมีอย่างน้อย 1 โปรไฟล์", "err");
+  if (ProfileStore.list.length <= 1) return showConnResult(tr("prof.min"), "err");
   if (!connDeleteArmed) {
     connDeleteArmed = true;
-    btn.textContent = "ยืนยันลบ?";
-    setTimeout(() => { connDeleteArmed = false; btn.textContent = "ลบโปรไฟล์"; }, 3000);
+    btn.textContent = tr("conn.confirmDelete");
+    setTimeout(() => { connDeleteArmed = false; btn.textContent = tr("conn.delete"); }, 3000);
     return;
   }
   connDeleteArmed = false;
-  btn.textContent = "ลบโปรไฟล์";
+  btn.textContent = tr("conn.delete");
   const p = activeProfile();
   await KeyStore.remove(p.id);
   delete keyCache[p.id];
@@ -402,8 +397,49 @@ async function clearKey() {
   await KeyStore.remove(p.id);
   delete keyCache[p.id];
   updateKeyNote(p);
-  showConnResult("ลบ API key แล้ว", "ok");
+  showConnResult(tr("key.removed"), "ok");
   await refreshModels();
+}
+
+function refreshLangUI() {
+  const ps = $("connPreset");
+  if (ps) {
+    const cur = ps.value;
+    ps.innerHTML = "";
+    Object.keys(PROVIDER_PRESETS).forEach((k) => {
+      const o = el("option", "", PROVIDER_PRESETS[k].label);
+      o.value = k;
+      ps.appendChild(o);
+    });
+    ps.value = cur;
+    updateConnHints(cur);
+  }
+  syncEngineModeUI();
+  refreshHeader();
+  updateModelInfo();
+  updateKeyNote(activeProfile(), true);
+  const panel = $("connPanel");
+  if ($("btnConnSettings")) $("btnConnSettings").textContent = panel && panel.style.display === "block" ? tr("mdl.hide") : tr("mdl.settings");
+  connDeleteArmed = false;
+  refreshModels();
+}
+
+let pluginVersion = "";
+
+// แสดง "มีอะไรใหม่" ใน About ตามเวอร์ชันใน manifest และภาษาของ UI
+function renderChangelog() {
+  const box = $("aboutNew");
+  if (!box || typeof CHANGELOG === "undefined" || !CHANGELOG.length) return;
+  const entry = CHANGELOG.find((e) => e.version === pluginVersion) || CHANGELOG[0];
+  const data = entry[uiLang] || entry.th;
+  box.innerHTML = "";
+  box.appendChild(el("div", "cl-title", tr("about.new", { version: pluginVersion || entry.version })));
+  [["new", "cl.new"], ["better", "cl.better"], ["fixed", "cl.fixed"]].forEach(([k, label]) => {
+    const items = data[k];
+    if (!items || !items.length) return;
+    box.appendChild(el("div", "cl-sec", tr(label)));
+    items.forEach((txt) => box.appendChild(el("div", "cl-item", "• " + txt)));
+  });
 }
 
 async function initSettings() {
@@ -413,6 +449,8 @@ async function initSettings() {
   if ($("aboutVersion")) {
     getPluginVersion().then((v) => {
       $("aboutVersion").textContent = v;
+      pluginVersion = v;
+      renderChangelog();
     });
   }
 
@@ -449,7 +487,7 @@ async function initSettings() {
       const panel = $("connPanel");
       const open = panel.style.display !== "block";
       panel.style.display = open ? "block" : "none";
-      $("btnConnSettings").textContent = open ? "ซ่อนตั้งค่า" : "ตั้งค่า";
+      $("btnConnSettings").textContent = open ? tr("mdl.hide") : tr("mdl.settings");
     });
   }
 
