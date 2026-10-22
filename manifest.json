@@ -2,7 +2,7 @@
   "manifestVersion": 5,
   "id": "a0699c84",
   "name": "Thai AI Proofreader TH/EN",
-  "version": "1.2.0",
+  "version": "1.2.5",
   "main": "index.html",
   "host": {
     "app": "ID",

@@ -20,8 +20,8 @@ const BUILTIN_PRESETS = {
   strict_proofread: {
     get name() { return tr("ps.builtinName"); },
     prompts: {
-      th: `คุณคือ "นักพิสูจน์อักษร" (Proofreader) ที่เชี่ยวชาญทั้งภาษาไทยและภาษาอังกฤษ ไม่ใช่บรรณาธิการ โดยมีหน้าที่ในการตรวจแต่ละภาษาทั้งไทยและอังกฤษ ตามเงื่อนไขของภาษานั้น ๆ เช่น ภาษาไทยใช้หลักของราชบัณฑิตยสถาน ส่วนภาษาอังกฤษใช้หลักของ Cambridge หรือ Oxford ก็ได้ โดยอิงจากบริบทในข้อความ หน้าที่คือ ตรวจหาคำผิด ชี้เฉพาะจุดที่มีคำที่สะกดผิด สะกดเกิน เจออักขระผิดตำแหน่ง เจอสระหรือวรรณยุกต์ซ้อน เป็นต้น ทำหน้าที่ ตรวจพิสูจน์อักษร ไม่ใช่หน้าที่ของบรรณาธิการ ห้ามปรับสำนวน ห้ามเรียบเรียงใหม่`,
-      en: `You are a "Proofreader" fluent in both Thai and English, not an Editor. Your duty is to check each language (Thai and English) according to its respective guidelines—for example, following the standards of the Royal Society of Thailand for Thai, and Cambridge or Oxford standards for English, depending on the context of the text. Your role is to identify errors by pointing out specific instances of misspelled words, extra characters, misplaced characters, or overlapping vowels and tone marks. You act strictly as a proofreader, not an editor: do not alter the style or tone, and do not rewrite the text.`
+      th: `คุณคือ "นักพิสูจน์อักษร" (Proofreader) ที่เชี่ยวชาญทั้งภาษาไทยและภาษาอังกฤษ ไม่ใช่บรรณาธิการ โดยมีหน้าที่ในการตรวจคำสะกดทั้งภาษาไทยและอังกฤษ ตามเงื่อนไขของภาษานั้น ๆ เช่น ภาษาไทยใช้หลักของราชบัณฑิตยสถาน ส่วนภาษาอังกฤษใช้หลักของ Cambridge หรือ Oxford ก็ได้ โดยอิงจากบริบทในข้อความ หน้าที่คือ ตรวจหาคำผิด ชี้เฉพาะจุดที่มีคำที่สะกดผิด สะกดเกิน เจออักขระผิดตำแหน่ง เจอสระหรือวรรณยุกต์ซ้อน เป็นต้น ทำหน้าที่ ตรวจพิสูจน์อักษร ไม่ใช่หน้าที่ของบรรณาธิการ ห้ามปรับสำนวน ห้ามเรียบเรียงใหม่`,
+      en: `You are a "Proofreader" fluent in both Thai and English, You're not an Editor. Your responsibility is to check spelling in BOTH Thai and English according to their respective standard guidelines—for example, following the Royal Society of Thailand for Thai, and Cambridge or Oxford standards for English, based on text context. Your role is to identify typos by pointing out specific instances of misspelled words, extra characters, misplaced characters, or overlapping vowels and tone marks. You act strictly as a proofreader, not an editor: do not alter the style, tone, or rewrite the text.`
     },
     get prompt() { return this.prompts[uiLang] || this.prompts.th; }
   }
@@ -63,7 +63,7 @@ let running = false;
 let cancelled = false;
 let live = null;
 let deleteArmedKey = null;
-let langs = { th: true, en: true };
+let langs = { th: true, en: true }; // Default: Check both
 let enDict = null;
 let segmenter = null;
 let dict = null;
@@ -101,7 +101,7 @@ function visible(s) {
   if (!t.trim()) t = tr("v.space", { n: s.length });
   return t;
 }
-function wantText(t) { return (langs.th && THAI.test(t)) || (langs.en && /[A-Za-z]{3}/.test(t)); }
+function wantText(t) { return THAI.test(t) || /[A-Za-z]{3}/.test(t); }
 
 function runRules(text, opts) {
   const out = [];
@@ -111,30 +111,29 @@ function runRules(text, opts) {
     let m;
     while ((m = re.exec(text)) !== null) { fn(m); if (m[0].length === 0) re.lastIndex++; }
   };
-  const TH_ON = !opts || opts.th !== false;
-  const scanTh = (re, fn) => { if (TH_ON) scan(re, fn); };
+
   const ctx = (idx, len, replacement, issue) => {
     const p = idx > 0 && /[\u0E01-\u0E2E]/.test(text[idx - 1]) ? text[idx - 1] : "";
     add(idx - p.length, p + text.substr(idx, len), replacement == null ? "" : p + replacement, issue);
   };
 
-  scanTh(/([\u0E30-\u0E3A\u0E40-\u0E4E])\1+/g, (m) => {
+  scan(/([\u0E30-\u0E3A\u0E40-\u0E4E])\1+/g, (m) => {
     if (m[1] === "\u0E40" && m[0].length === 2) return add(m.index, m[0], "\u0E41", { k: "r.doubleE" });
     if (/[\u0E40-\u0E45]/.test(m[1])) return add(m.index, m[0], m[1], { k: "r.dupChar" });
     ctx(m.index, m[0].length, m[1], { k: "r.dupVowel" });
   });
 
-  scanTh(/[\u0E31\u0E34-\u0E37\u0E47]{2}|[\u0E48-\u0E4B]{2}|[\u0E48-\u0E4B][\u0E31\u0E34-\u0E37]/g, (m) => {
+  scan(/[\u0E31\u0E34-\u0E37\u0E47]{2}|[\u0E48-\u0E4B]{2}|[\u0E48-\u0E4B][\u0E31\u0E34-\u0E37]/g, (m) => {
     if (m[0][0] === m[0][1]) return;
     ctx(m.index, m[0].length, null, { k: "r.stacked" });
   });
 
-  scanTh(/\u0E4D\u0E32/g, (m) => ctx(m.index, 2, "\u0E33", { k: "r.nikhahit" }));
+  scan(/\u0E4D\u0E32/g, (m) => ctx(m.index, 2, "\u0E33", { k: "r.nikhahit" }));
 
-  scanTh(/(?:^|[^\u0E01-\u0E4E])[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g,
+  scan(/(?:^|[^\u0E01-\u0E4E])[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g,
     (m) => add(m.index, m[0], "", { k: "r.floating" }));
 
-  scanTh(/[\u0E01-\u0E7F][A-Za-z][\u0E01-\u0E7F]/g,
+  scan(/[\u0E01-\u0E7F][A-Za-z][\u0E01-\u0E7F]/g,
     (m) => add(m.index, m[0], "", { k: "r.latinInThai" }));
 
   scan(/[\uFFFD\uE000-\uF8FF\uFEFF\u200B-\u200D\u2060]/g, (m) => {
@@ -143,16 +142,14 @@ function runRules(text, opts) {
     add(m.index, m[0], "", { k: hidden ? "r.hidden" : "r.strange", p: { hex } });
   });
 
-  scanTh(/([\u0E01-\u0E2E])\1{2,}/g, (m) => add(m.index, m[0], m[1], { k: "r.consRepeat" }));
+  scan(/([\u0E01-\u0E2E])\1{2,}/g, (m) => add(m.index, m[0], m[1], { k: "r.consRepeat" }));
 
-  if (opts && opts.en) {
-    scan(/\b([A-Za-z]{2,})[ \t]+\1\b/gi, (m) => add(m.index, m[0], m[1], { k: "r.enDup" }));
-  }
+  scan(/\b([A-Za-z]{2,})[ \t]+\1\b/gi, (m) => add(m.index, m[0], m[1], { k: "r.enDup" }));
 
   if (opts && opts.spacing) {
-    scanTh(/([\u0E01-\u0E45\u0E47-\u0E7F]{1,4})\u0E46/g,
+    scan(/([\u0E01-\u0E45\u0E47-\u0E7F]{1,4})\u0E46/g,
       (m) => add(m.index, m[0], m[1] + " \u0E46", { k: "r.yamokBefore" }));
-    scanTh(/\u0E46[\u0E01-\u0E45\u0E47-\u0E7F]/g,
+    scan(/\u0E46[\u0E01-\u0E45\u0E47-\u0E7F]/g,
       (m) => add(m.index, m[0], "\u0E46 " + m[0][1], { k: "r.yamokAfter" }));
     scan(/ {2,}/g, (m) => add(m.index, m[0], " ", { k: "r.dblSpace" }));
   }
@@ -253,82 +250,6 @@ function initSegmenter() {
     segmenter = sg;
     return true;
   } catch (e) { return false; }
-}
-
-function dictAvailable() {
-  return typeof THAI_WORDS_TEXT === "string" && THAI_WORDS_TEXT.length > 1000;
-}
-
-function enDictAvailable() {
-  return typeof EN_WORDS_TEXT === "string" && EN_WORDS_TEXT.length > 1000;
-}
-
-function getDict() {
-  if (dict) return dict;
-  dict = new Set();
-  if (dictAvailable()) THAI_WORDS_TEXT.split("\n").forEach((w) => { if (w) dict.add(w.trim()); });
-  ignoreSet.forEach((w) => dict.add(w));
-  return dict;
-}
-
-function getEnDict() {
-  if (enDict) return enDict;
-  enDict = new Set();
-  if (enDictAvailable()) EN_WORDS_TEXT.split("\n").forEach((w) => { if (w) enDict.add(w.trim()); });
-  ignoreSet.forEach((w) => enDict.add(String(w).toLowerCase()));
-  return enDict;
-}
-
-function isSentenceStart(text, i) {
-  let j = i - 1;
-  while (j >= 0 && /[ \t"\u201C\u2018'(\[]/.test(text[j])) j--;
-  return j < 0 || /[.!?:\r\n\u2028]/.test(text[j]);
-}
-
-function findCandidates(text) {
-  if (!segmenter) return [];
-  const D = getDict();
-  const out = [];
-  let prev = null;
-  for (const sg of segmenter.segment(text)) {
-    const s = sg.segment;
-    const start = sg.index;
-    const end = start + s.length;
-    if (LATIN_WORD.test(s)) {
-      if (!langs.en || !enDictAvailable()) { prev = null; continue; }
-      const lower = s.toLowerCase().replace(/['\u2019]s$/, "");
-      let kind = null;
-      const odd = /[A-Z]/.test(s.slice(1));
-      const capital = /^[A-Z]/.test(s);
-      if (lower.length >= 3 && !odd && (!capital || isSentenceStart(text, start)) && !getEnDict().has(lower)) kind = "en";
-      if (!kind && prev && prev.lang === "en" && prev.bare === lower && lower.length >= 2) {
-        out.push({ start: prev.start, end, kind: "dup" });
-        prev = null;
-        continue;
-      }
-      if (kind) out.push({ start, end, kind });
-      prev = { bare: lower, start, end, lang: "en" };
-      continue;
-    }
-    if (!THAI.test(s)) { if (!/^\s+$/.test(s)) prev = null; continue; }
-    if (!langs.th || !dictAvailable()) { prev = null; continue; }
-    const bare = s.replace(/[\u0E46\u0E2F]/g, "");
-    if (!bare) { prev = null; continue; }
-
-    let kind = null;
-    if (/[A-Za-z0-9]/.test(bare)) kind = "mixed";
-    else if (!D.has(bare) && bare !== "ณ" && !/^[\u0E50-\u0E59]+$/.test(bare)) {
-      if (!(text[end] === "." && bare.length <= 2)) kind = "oov";
-    }
-    if (!kind && prev && prev.bare === bare && bare.length >= 2) {
-      out.push({ start: prev.start, end, kind: "dup" });
-      prev = null;
-      continue;
-    }
-    if (kind) out.push({ start, end, kind });
-    prev = { bare, start };
-  }
-  return out;
 }
 
 function collectUnits(scope) {
@@ -519,7 +440,6 @@ function buildCard(f) {
   }
   card.appendChild(word);
 
-  // f.issue is {k, p} for rule/dictionary findings, or plain text from the service/AI
   const issueText = f.issue && typeof f.issue === "object" ? tr(f.issue.k, f.issue.p) : f.issue;
   if (issueText && issueText !== "สะกดผิด") card.appendChild(el("div", "issue", issueText));
 
@@ -628,6 +548,7 @@ function resetCheck() {
   progressEnd();
   Tele.reset();
   renderStats();
+  if ($("disclaimerBox")) $("disclaimerBox").style.display = "none";
   setStatus(tr("status.ready"));
 }
 
@@ -725,9 +646,8 @@ async function runCheck() {
 
   const spacing = $("chkSpacing") ? $("chkSpacing").checked : false;
   const scope = $("scopeSelect") ? $("scopeSelect").value : "selection";
-  langs = { th: $("chkTH") ? $("chkTH").checked : true, en: $("chkEN") ? $("chkEN").checked : true };
 
-  if (!langs.th && !langs.en) return setStatus(tr("run.noLang"), RED);
+  if ($("disclaimerBox")) $("disclaimerBox").style.display = "none";
 
   let units;
   try { units = collectUnits(scope); } catch (e) { return setStatus("" + (e.message || e), RED); }
@@ -760,7 +680,7 @@ async function runCheck() {
 
     if (useRules) {
       for (const u of units) {
-        for (const r of runRules(u.text, { spacing, th: langs.th, en: langs.en })) {
+        for (const r of runRules(u.text, { spacing, th: true, en: true })) {
           if (ignoreSet.has(r.original)) continue;
           findings.push(makeFinding("rule", r.original, r.suggestion, r.issue, [{ unit: u, start: r.start, len: r.original.length }]));
         }
@@ -779,7 +699,7 @@ async function runCheck() {
       for (let i = 0; i < sc.length; i++) {
         if (cancelled) break;
         try {
-          const items = await serviceCheck(svcUrl, sc[i].parts.join("\n"), langs, 30);
+          const items = await serviceCheck(svcUrl, sc[i].parts.join("\n"), { th: true, en: true }, 30);
           applyItems(items, sc[i].units, "svc", ctx);
         } catch (e) {
           console.warn("Service check error", e);
@@ -793,39 +713,6 @@ async function runCheck() {
       }
       progressEnd();
       renderFindings();
-
-      const useCand = $("chkCandPy") ? $("chkCandPy").checked : false;
-      if (useCand && segmenter && (dictAvailable() || enDictAvailable())) {
-        const CAND_KIND = {
-          oov: { k: "c.oov" },
-          dup: { k: "c.dup" },
-          mixed: { k: "c.mixed" },
-          en: { k: "c.en" }
-        };
-
-        const occupied = new Set();
-        findings.forEach((f) => f.positions.forEach((p) => occupied.add(p.unit.idx + ":" + p.start)));
-
-        for (const u of units) {
-          try {
-            const cands = findCandidates(u.text);
-            for (const c of cands) {
-              const word = u.text.substr(c.start, c.end - c.start).trim();
-              if (!word || ignoreSet.has(word)) continue;
-
-              const ok = u.idx + ":" + c.start;
-              if (!occupied.has(ok)) {
-                occupied.add(ok);
-                const f = makeFinding("cand", word, "", CAND_KIND[c.kind] || { k: "c.generic" }, [{ unit: u, start: c.start, len: c.end - c.start }]);
-                findings.push(f);
-              }
-            }
-          } catch (e) {
-            console.warn("Candidate scan error", e);
-          }
-        }
-        renderFindings();
-      }
     }
 
     if (useAI && !cancelled) {
@@ -884,8 +771,10 @@ async function runCheck() {
   const visibleCount = findings.filter((f) => !f.hidden).length;
   if (visibleCount === 0) {
     setStatus(tr("run.none"), GREEN);
+    if ($("disclaimerBox")) $("disclaimerBox").style.display = "none";
   } else {
     setStatus(tr("run.found", { n: visibleCount }), GREEN);
+    if ($("disclaimerBox")) $("disclaimerBox").style.display = "block";
   }
 }
 

@@ -12,6 +12,32 @@
 
 const CHANGELOG = [
   {
+    version: "1.2.5",
+    th: {
+      new: [
+        "เพิ่มป้ายเตือนความถูกต้อง (Disclaimer Banner) ใต้สถานะการตรวจ เพื่อเตือนให้ผู้ใช้ตรวจสอบข้อความอีกครั้งเสมอ"
+      ],
+      better: [
+        "ปรับปรุง System Instruction (Prompt) มาตรฐานให้มีความชัดเจนยิ่งขึ้น และเน้นย้ำการตรวจจับคำสะกดผิดทั้งไทยและอังกฤษอย่างเท่าเทียม",
+        "ปรับ UI แสดงขอบเขตภาษาแบบ Dynamic (`[TH]` / `[TH/EN]`) ใต้ปุ่มสลับเครื่องมือ เพื่อลดความสับสนเรื่องภาษาที่รองรับ",
+        "ตัดตัวเลือก 'ภาษาที่ตรวจ' และ 'ดักจับคำน่าสงสัย' ออกจาก UI เพื่อลดความซับซ้อนในการตั้งค่า"
+      ],
+      fixed: []
+    },
+    en: {
+      new: [
+        "Added a disclaimer warning banner below the search status to remind users to always review generated results."
+      ],
+      better: [
+        "Refined built-in System Instructions (Prompt) for better clarity, ensuring equal proofreading focus on both Thai and embedded English words.",
+        "Added dynamic language boundary indicators (`[TH]` / `[TH/EN]`) under the checker toggle to prevent language support confusion.",
+        "Simplified UI by removing 'Languages to check' and 'Flag suspicious words' options."
+      ],
+      fixed: []
+    }
+  },
+
+  {
     version: "1.2.0",
     th: {
       new: [
@@ -34,22 +60,15 @@ const CHANGELOG = [
     },
     en: {
       new: [
-        "Switch the interface language (TH / EN); Thai is the default. The built-in prompt follows the language too.",
-        "\"Clear all results\" button: wipe the findings and start a fresh check right away.",
-        "PyThaiNLP mode: if the Python service is not running, you now get a clear error and the check stops instead of silently falling back to the dictionary only.",
-        "The ? and i buttons now swap panels, and clicking anywhere else closes them.",
-        "The About panel now shows \"What's new\"."
+        "Added a disclaimer warning banner below the search status to remind users to always review generated results."
       ],
       better: [
-        "Redesigned, cleaner and more modern interface: consistent spacing, a segmented checker switch, easier-to-read result cards, and the activity log moved to the bottom.",
-        "Smoother result display on long documents, and faster scanning for suspicious words."
+        "Refined built-in System Instructions (Prompt) for better clarity, ensuring equal proofreading focus on both Thai and embedded English words.",
+        "Added dynamic language boundary indicators (`[TH]` / `[TH/EN]`) under the checker toggle to prevent language support confusion.",
+        "Simplified UI by removing 'Languages to check' and 'Flag suspicious words' options.",
+        "Improved PyThaiNLP URL loader to automatically sanitize and strip Markdown formatting, preventing duplicated URL strings."
       ],
-      fixed: [
-        "Add profile, Delete profile and Remove key buttons did nothing.",
-        "A model picked from the list was not saved (Cloud API requests went out without a model name).",
-        "Changing the provider did not update the URL / timeout / chunk defaults.",
-        "The i (About) button did not work, and the GitHub guide link could not be opened."
-      ]
+      fixed: []
     }
   }
 ];

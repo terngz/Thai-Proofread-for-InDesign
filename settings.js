@@ -51,7 +51,6 @@ function syncEngineModeUI() {
   if ($("engineDesc")) $("engineDesc").textContent = tr(mode === "ai" ? "eng.ai" : "eng.pythainlp");
   const pyBox = $("pythainlpConfigBox");
   const aiBox = $("aiConfigBox");
-  const candRow = $("chkCandPyRow");
 
   const boxPy = $("boxPyThaiNLP");
   const boxAI = $("boxAI");
@@ -61,10 +60,10 @@ function syncEngineModeUI() {
 
   if (pyBox) pyBox.style.display = mode === "pythainlp" ? "block" : "none";
   if (aiBox) aiBox.style.display = mode === "ai" ? "block" : "none";
-  if (candRow) candRow.style.display = mode === "pythainlp" ? "flex" : "none";
 
   lsSet(K_ENGINE_MODE, mode);
 }
+
 function loadEngineModePref() {
   const savedMode = lsGet(K_ENGINE_MODE, "pythainlp");
   if (savedMode === "ai" && $("modeAI")) {

@@ -3,6 +3,28 @@
 เวอร์ชันล่าสุดอยู่บนสุด · Newest version first.
 ปุ่ม "What's new" ในหน้า About เปิดไฟล์นี้บน GitHub · The "What's new" link in the About panel opens this file on GitHub.
 
+## v1.2.5 — 2026-10-22
+
+### ไทย
+
+**ใหม่**
+- เพิ่มป้ายเตือนความถูกต้อง (Disclaimer Banner) ใต้สถานะการตรวจ เพื่อเตือนให้ผู้ใช้ตรวจสอบข้อความอีกครั้งเสมอ
+
+**ปรับปรุง**
+- ปรับปรุง System Instruction (Prompt) มาตรฐานให้มีความชัดเจนยิ่งขึ้น และเน้นย้ำการตรวจจับคำสะกดผิดทั้งไทยและอังกฤษอย่างเท่าเทียม
+- ปรับ UI แสดงขอบเขตภาษาแบบ Dynamic (`[TH]` / `[TH/EN]`) ใต้ปุ่มสลับเครื่องมือ เพื่อลดความสับสนเรื่องภาษาที่รองรับ
+- ตัดตัวเลือก "ภาษาที่ตรวจ" และ "ดักจับคำน่าสงสัย" ออกจาก UI เพื่อลดความซับซ้อนในการตั้งค่า
+
+### English
+
+**New**
+- Added a disclaimer warning banner below the search status to remind users to always review generated results.
+
+**Improved**
+- Refined built-in System Instructions (Prompt) for better clarity, ensuring equal proofreading focus on both Thai and embedded English words.
+- Added dynamic language boundary indicators (`[TH]` / `[TH/EN]`) under the checker toggle to prevent language support confusion.
+- Simplified UI by removing "Languages to check" and "Flag suspicious words" options.
+
 ## v1.2.0 — 2026-10-19
 
 ### ไทย

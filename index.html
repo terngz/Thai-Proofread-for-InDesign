@@ -334,22 +334,6 @@
       color: var(--fg) !important;
     }
 
-    .lang-row {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-    }
-
-    .lang-row .lang-lbl {
-      margin-right: 16px;
-      font-size: 11px;
-      color: var(--fg2);
-    }
-
-    .lang-row .chk {
-      margin: 0 16px 0 0;
-    }
-
     .inline-row {
       display: flex;
       flex-direction: row;
@@ -426,7 +410,6 @@
       min-width: auto !important;
       height: 22px !important;
       margin: 4px !important;
-      /* ใส่ margin ล็อกระยะห่างรอบทิศทาง 4px ชัวร์ 100% */
       padding: 0 12px !important;
       font-size: 11px !important;
     }
@@ -483,6 +466,17 @@
     #status.ok {
       color: var(--ok);
       border-left-color: var(--ok);
+    }
+
+    .disclaimer-box {
+      margin: 0 0 8px 0;
+      padding: 8px 12px;
+      border-radius: 6px;
+      background-color: #C62828;
+      color: #FFFFFF;
+      font-size: 11px;
+      line-height: 1.4;
+      font-weight: 500;
     }
 
     #progressWrap {
@@ -706,14 +700,11 @@
 
     <div id="aboutBox" class="subpanel" style="display: none;">
       <div class="help-title">Thai AI Proofreader</div>
-      <div data-i18n="about.desc">Thai and English proofreading plugin for Adobe InDesign, powered by PyThaiNLP and AI
-        engines</div>
+      <div data-i18n="about.desc">Thai and English proofreading plugin for Adobe InDesign, powered by PyThaiNLP and AI engines</div>
       <div><span data-i18n="about.ver">Version</span> <span id="aboutVersion"></span></div>
-      <div><span id="btnOpenChangelog" class="link" style="display: none;" data-i18n="about.new">What's new in
-          v{version} ↗</span></div>
+      <div><span id="btnOpenChangelog" class="link" style="display: none;" data-i18n="about.new">What's new in v{version} ↗</span></div>
       <div>©2026 Konnext Group. All rights reserved.</div>
-      <div class="about-foot"><button id="btnKofi" class="btn-kofi" data-i18n="about.kofi">Support me on Ko-fi</button>
-      </div>
+      <div class="about-foot"><button id="btnKofi" class="btn-kofi" data-i18n="about.kofi">Support me on Ko-fi</button></div>
     </div>
 
     <div id="helpBox" class="subpanel" style="display: none;">
@@ -721,10 +712,8 @@
       <div class="help-scroll">
         <div style="margin-bottom: 6px;">
           <div><b data-i18n="help.s1">1. Choose the main checker</b></div>
-          <div style="padding-left: 16px;" data-i18n="help.s1a">PyThaiNLP: fast offline spell check (requires
-            spellcheck_server.py)</div>
-          <div style="padding-left: 16px;" data-i18n="help.s1b">AI Engine: context-aware check (LM Studio / Ollama /
-            Cloud API)</div>
+          <div style="padding-left: 16px;" data-i18n="help.s1a">PyThaiNLP: fast offline spell check (requires spellcheck_server.py)</div>
+          <div style="padding-left: 16px;" data-i18n="help.s1b">AI Engine: context-aware check (LM Studio / Ollama / Cloud API)</div>
         </div>
 
         <div style="margin-bottom: 6px;">
@@ -734,14 +723,12 @@
 
         <div style="margin-bottom: 6px;">
           <div><b data-i18n="help.s3">3. Handle the results</b></div>
-          <div style="padding-left: 16px;" data-i18n="help.s3a">Press "Go to" to select the word in InDesign, or "Fix"
-            to correct it right away</div>
+          <div style="padding-left: 16px;" data-i18n="help.s3a">Press "Go to" to select the word in InDesign, or "Fix" to correct it right away</div>
         </div>
 
         <div style="margin-top: 14px;">
           <div><b data-i18n="help.s4">Requirements</b></div>
-          <div style="padding-left: 16px;" data-i18n="help.s4a">Python 3.9+ for PyThaiNLP mode, or an active API key /
-            local server for AI mode.</div>
+          <div style="padding-left: 16px;" data-i18n="help.s4a">Python 3.9+ for PyThaiNLP mode, or an active API key / local server for AI mode.</div>
         </div>
       </div>
       <div class="help-foot" style="margin-top: 10px;">
@@ -774,17 +761,13 @@
             <div id="serviceHelp" class="subpanel" style="display: none;">
               <div class="help-title" data-i18n="svc.h.title">How to install and run the spell-check service</div>
               <div data-i18n="svc.h.1">1. Install Python 3.9 or later (download from python.org)</div>
-              <div data-i18n="svc.h.2">2. Open PowerShell (Windows) or Terminal (Mac) and install the packages (one time
-                only):</div>
+              <div data-i18n="svc.h.2">2. Open PowerShell (Windows) or Terminal (Mac) and install the packages (one time only):</div>
               <div class="code">pip install pythainlp pyspellchecker</div>
-              <div data-i18n="svc.h.3">3. Run the service using the full path of the saved spellcheck_server.py (you can
-                drag the file into the window):</div>
+              <div data-i18n="svc.h.3">3. Run the service using the full path of the saved spellcheck_server.py (you can drag the file into the window):</div>
               <div class="code">python "C:\{your save path}\spellcheck_server.py"</div>
-              <div data-i18n="svc.h.4">4. When you see "spellcheck service on http://127.0.0.1:8765" it is ready. Keep
-                that window open while you work.</div>
+              <div data-i18n="svc.h.4">4. When you see "spellcheck service on http://127.0.0.1:8765" it is ready. Keep that window open while you work.</div>
               <div data-i18n="svc.h.5">5. Come back and press "Test"</div>
-              <div class="issue" data-i18n="svc.h.note">To change the port: python spellcheck_server.py --port 9000,
-                then update the URL to match. See README.md for details.</div>
+              <div class="issue" data-i18n="svc.h.note">To change the port: python spellcheck_server.py --port 9000, then update the URL to match. See README.md for details.</div>
             </div>
             <div class="inline-row">
               <input type="text" id="serviceUrl" value="http://127.0.0.1:8765">
@@ -804,13 +787,11 @@
             <div class="acc-body">
               <div class="field row">
                 <div style="flex: 1;">
-                  <div class="lbl"><span data-i18n="mdl.profile">Profile</span><span id="btnConnSettings" class="link"
-                      data-i18n="mdl.settings">Settings</span></div>
+                  <div class="lbl"><span data-i18n="mdl.profile">Profile</span><span id="btnConnSettings" class="link" data-i18n="mdl.settings">Settings</span></div>
                   <select id="profileSelect"></select>
                 </div>
                 <div style="flex: 1;">
-                  <div class="lbl"><span data-i18n="mdl.model">Model</span><span id="btnRefreshModels" class="link"
-                      data-i18n="mdl.refresh">Refresh</span></div>
+                  <div class="lbl"><span data-i18n="mdl.model">Model</span><span id="btnRefreshModels" class="link" data-i18n="mdl.refresh">Refresh</span></div>
                   <select id="modelSelect">
                     <option value="" data-i18n="mdl.connecting">Connecting...</option>
                   </select>
@@ -838,10 +819,8 @@
                   <input type="text" id="connUrl">
                 </div>
                 <div class="field">
-                  <div class="lbl"><span id="connKeyLabel">API KEY</span><span id="btnConnClearKey" class="link"
-                      data-i18n="conn.clearKey">Remove key</span></div>
-                  <input type="password" id="connKey" placeholder="Paste your API key here"
-                    data-i18n-placeholder="conn.keyPh">
+                  <div class="lbl"><span id="connKeyLabel">API KEY</span><span id="btnConnClearKey" class="link" data-i18n="conn.clearKey">Remove key</span></div>
+                  <input type="password" id="connKey" placeholder="Paste your API key here" data-i18n-placeholder="conn.keyPh">
                   <div id="connKeyNote" class="issue"></div>
                 </div>
                 <div class="field">
@@ -900,8 +879,7 @@
                 <div id="connCloudRow" style="display: none;">
                   <label class="chk">
                     <input type="checkbox" id="connCloudAck">
-                    <span data-i18n="conn.cloudAck">I understand that document text will be sent from this computer to
-                      this provider</span>
+                    <span data-i18n="conn.cloudAck">I understand that document text will be sent from this computer to this provider</span>
                   </label>
                 </div>
                 <div class="btn-line">
@@ -916,16 +894,13 @@
           </div>
 
           <div class="acc" id="accPrompt" data-open="0">
-            <div class="acc-head"><span data-i18n="sec.prompt">AI instruction (System Instruction)</span><span
-                class="acc-ind">+</span></div>
+            <div class="acc-head"><span data-i18n="sec.prompt">AI instruction (System Instruction)</span><span class="acc-ind">+</span></div>
             <div class="acc-body">
               <div class="field">
-                <div class="lbl"><span>PRESET</span><span id="btnResetPrompt" class="link" data-i18n="pre.reset">Restore
-                    default</span></div>
+                <div class="lbl"><span>PRESET</span><span id="btnResetPrompt" class="link" data-i18n="pre.reset">Restore default</span></div>
                 <select id="presetSelect"></select>
                 <div class="preset-row">
-                  <input type="text" id="presetName" placeholder="New preset name..."
-                    data-i18n-placeholder="pre.namePh">
+                  <input type="text" id="presetName" placeholder="New preset name..." data-i18n-placeholder="pre.namePh">
                   <button id="btnSavePreset" data-i18n="btn.save">Save</button>
                   <button id="btnDeletePreset" data-i18n="btn.delete">Delete</button>
                 </div>
@@ -952,29 +927,18 @@
           <input type="checkbox" id="chkSpacing" checked>
           <span data-i18n="rules.spacing">Check spacing around mai yamok (ๆ) and double spaces</span>
         </label>
-        <label class="chk" id="chkCandPyRow">
-          <input type="checkbox" id="chkCandPy">
-          <span data-i18n="rules.cand">Flag suspicious words using the local dictionary (words not in the
-            dictionary)</span>
-        </label>
       </div>
     </div>
 
     <div class="acc" id="accScope" data-open="1">
-      <div class="acc-head"><span data-i18n="sec.scope">Scope &amp; languages</span><span class="acc-ind">−</span></div>
+      <div class="acc-head"><span data-i18n="sec.scope">Check scope</span><span class="acc-ind">−</span></div>
       <div class="acc-body">
         <div class="field">
-          <div class="lbl"><span data-i18n="scope.label">Check scope</span></div>
           <select id="scopeSelect">
             <option value="selection" selected data-i18n="scope.sel">Selection (frame / text / table)</option>
             <option value="page" data-i18n="scope.page">Current page</option>
             <option value="document" data-i18n="scope.doc">Entire document</option>
           </select>
-        </div>
-        <div class="field lang-row">
-          <span class="lang-lbl" data-i18n="scope.langLbl">Languages to check</span>
-          <label class="chk"><input type="checkbox" id="chkTH" checked><span data-i18n="scope.th">Thai</span></label>
-          <label class="chk"><input type="checkbox" id="chkEN" checked><span data-i18n="scope.en">English</span></label>
         </div>
       </div>
     </div>
@@ -992,6 +956,9 @@
     </div>
 
     <div id="status">Status: ready</div>
+    <div id="disclaimerBox" class="disclaimer-box" style="display: none;" data-i18n="run.disclaimer">
+      ⚠️ ผลการตรวจอาจไม่ถูกต้องทั้งหมด โปรดตรวจสอบความถูกต้องอีกครั้งเสมอ
+    </div>
     <div id="statsLine"></div>
     <div id="resultList"></div>
 
