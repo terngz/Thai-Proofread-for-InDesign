@@ -3,7 +3,7 @@
 เวอร์ชันล่าสุดอยู่บนสุด · Newest version first.
 ปุ่ม "What's new" ในหน้า About เปิดไฟล์นี้บน GitHub · The "What's new" link in the About panel opens this file on GitHub.
 
-## v1.3.0 — 2026-10-23
+## v1.3.0 — 2026-10-26
 
 ### ไทย
 
