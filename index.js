@@ -2,18 +2,94 @@
 const { app, NothingEnum, ScriptLanguage, UndoModes } = require("indesign");
 const { shell } = require("uxp");
 
+// =========================================================================
+// OPTIMIZED STATE MANAGEMENT (แยกข้อมูลตาม Document Tab + Auto Clean Memory)
+// =========================================================================
+const docFindingsMap = new Map();
+let currentDocId = null;
+
+function syncStateWithActiveDocument() {
+  if (!app.documents || app.documents.length === 0) {
+    if (currentDocId !== null) {
+      currentDocId = null;
+      findings = [];
+      renderFindings();
+      if (typeof setStatus === "function") setStatus(tr("status.ready"));
+    }
+    return;
+  }
+
+  let activeId = null;
+  try {
+    activeId = app.activeDocument.id;
+  } catch (e) {
+    return;
+  }
+
+  // สลับ Tab ไปยังไฟล์งานอื่น
+  if (currentDocId !== activeId) {
+    currentDocId = activeId;
+
+    if (!docFindingsMap.has(currentDocId)) {
+      docFindingsMap.set(currentDocId, []);
+    }
+
+    // ดึง findings ของไฟล์นั้นกลับมาแสดง
+    findings = docFindingsMap.get(currentDocId);
+
+    // วาด Card ผลลัพธ์กลับมาบนหน้าจอ และอัปเดต Status
+    renderFindings();
+
+    const visibleCount = findings.filter((f) => !f.hidden).length;
+    if (visibleCount === 0) {
+      if (typeof setStatus === "function") setStatus(tr("status.ready"));
+      if ($("disclaimerBox")) $("disclaimerBox").style.display = "none";
+    } else {
+      if (typeof setStatus === "function") setStatus(tr("run.found", { n: visibleCount }), GREEN);
+      if ($("disclaimerBox")) $("disclaimerBox").style.display = "block";
+    }
+  }
+}
+
+// Event Listeners สำหรับการสลับ Tab และปิดไฟล์
+try {
+  app.addEventListener("afterSelectionChanged", syncStateWithActiveDocument);
+} catch (e) {
+  console.warn("Failed to bind afterSelectionChanged:", e);
+}
+
+try {
+  app.addEventListener("beforeClose", (evt) => {
+    try {
+      const targetDoc = evt.target;
+      if (targetDoc && targetDoc.id) {
+        docFindingsMap.delete(targetDoc.id); // ล้าง Memory ทันทีที่ปิดไฟล์
+        if (currentDocId === targetDoc.id) {
+          currentDocId = null;
+          findings = [];
+        }
+      }
+    } catch (err) {
+      /* ignore */
+    }
+  });
+} catch (e) {
+  console.warn("Failed to bind beforeClose:", e);
+}
+// =========================================================================
+
 let chunkLimit = 800;
 const MAX_ORIGINAL_LEN = 30;
 const K_PRESETS = "ai_proofread_custom_presets";
 const K_IGNORE = "ai_proofread_ignore";
 const THAI = /[\u0E01-\u0E7F]/;
-const LATIN_WORD = /^[A-Za-z][A-Za-z'\u2019]*$/;
+/* const LATIN_WORD = /^[A-Za-z][A-Za-z'\u2019]*$/; */
 const MARK_L = "【";
 const MARK_R = "】";
 const RED = "err";
 const GREEN = "ok";
-const URL_README = "https://github.com/terngz/indesign-thaiproofread/blob/main/README.md";
-const URL_CHANGELOG = "https://github.com/terngz/indesign-thaiproofread/blob/main/CHANGELOG.md";
+const URL_README = "https://github.com/terngz/Thai-Proofread-for-InDesign/blob/main/README.md";
+const URL_CHANGELOG = "https://github.com/terngz/Thai-Proofread-for-InDesign/blob/main/CHANGELOG.md";
 const URL_KOFI = "https://ko-fi.com/Y8I2292JV2";
 
 const BUILTIN_PRESETS = {
@@ -57,16 +133,14 @@ const RESPONSE_SCHEMA = {
 
 const $ = (id) => document.getElementById(id);
 let customPresets = {};
+let presetMode = "view";
 let ignoreSet = new Set();
 let findings = [];
 let running = false;
 let cancelled = false;
 let live = null;
 let deleteArmedKey = null;
-let langs = { th: true, en: true }; // Default: Check both
-let enDict = null;
 let segmenter = null;
-let dict = null;
 
 function el(tag, cls, text) {
   const e = document.createElement(tag);
@@ -117,42 +191,62 @@ function runRules(text, opts) {
     add(idx - p.length, p + text.substr(idx, len), replacement == null ? "" : p + replacement, issue);
   };
 
-  scan(/([\u0E30-\u0E3A\u0E40-\u0E4E])\1+/g, (m) => {
-    if (m[1] === "\u0E40" && m[0].length === 2) return add(m.index, m[0], "\u0E41", { k: "r.doubleE" });
-    if (/[\u0E40-\u0E45]/.test(m[1])) return add(m.index, m[0], m[1], { k: "r.dupChar" });
-    ctx(m.index, m[0].length, m[1], { k: "r.dupVowel" });
-  });
+  // ==========================================
+  // 1. AUTOMATIC RULES (กฎภาษาไทย / โครงสร้างคำ)
+  // ==========================================
+  if (opts && opts.rules) {
+    // ซ้ำสระ/อักขระ
+    scan(/([\u0E30-\u0E3A\u0E40-\u0E4E])\1+/g, (m) => {
+      if (m[1] === "\u0E40" && m[0].length === 2) return add(m.index, m[0], "\u0E41", { k: "r.doubleE" });
+      if (/[\u0E40-\u0E45]/.test(m[1])) return add(m.index, m[0], m[1], { k: "r.dupChar" });
+      ctx(m.index, m[0].length, m[1], { k: "r.dupVowel" });
+    });
 
-  scan(/[\u0E31\u0E34-\u0E37\u0E47]{2}|[\u0E48-\u0E4B]{2}|[\u0E48-\u0E4B][\u0E31\u0E34-\u0E37]/g, (m) => {
-    if (m[0][0] === m[0][1]) return;
-    ctx(m.index, m[0].length, null, { k: "r.stacked" });
-  });
+    // สระ/วรรณยุกต์ซ้อนผิดตำแหน่ง
+    scan(/[\u0E31\u0E34-\u0E37\u0E47]{2}|[\u0E48-\u0E4B]{2}|[\u0E48-\u0E4B][\u0E31\u0E34-\u0E37]/g, (m) => {
+      if (m[0][0] === m[0][1]) return;
+      ctx(m.index, m[0].length, null, { k: "r.stacked" });
+    });
 
-  scan(/\u0E4D\u0E32/g, (m) => ctx(m.index, 2, "\u0E33", { k: "r.nikhahit" }));
+    // นฤคหิต
+    scan(/\u0E4D\u0E32/g, (m) => ctx(m.index, 2, "\u0E33", { k: "r.nikhahit" }));
 
-  scan(/(?:^|[^\u0E01-\u0E4E])[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g,
-    (m) => add(m.index, m[0], "", { k: "r.floating" }));
+    // วรรณยุกต์ลอย
+    scan(/(?:^|[^\u0E01-\u0E4E])[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g,
+      (m) => add(m.index, m[0], "", { k: "r.floating" }));
 
-  scan(/[\u0E01-\u0E7F][A-Za-z][\u0E01-\u0E7F]/g,
-    (m) => add(m.index, m[0], "", { k: "r.latinInThai" }));
+    // อักษรภาษาอังกฤษโผล่กลางคำไทย
+    scan(/[\u0E01-\u0E7F][A-Za-z][\u0E01-\u0E7F]/g,
+      (m) => add(m.index, m[0], "", { k: "r.latinInThai" }));
 
-  scan(/[\uFFFD\uE000-\uF8FF\uFEFF\u200B-\u200D\u2060]/g, (m) => {
-    const hex = "U+" + m[0].charCodeAt(0).toString(16).toUpperCase().padStart(4, "0");
-    const hidden = /[\uFEFF\u200B-\u200D\u2060]/.test(m[0]);
-    add(m.index, m[0], "", { k: hidden ? "r.hidden" : "r.strange", p: { hex } });
-  });
+    // อักขระแปลกปลอม/ซ่อน
+    scan(/[\uFFFD\uE000-\uF8FF\uFEFF\u200B-\u200D\u2060]/g, (m) => {
+      const hex = "U+" + m[0].charCodeAt(0).toString(16).toUpperCase().padStart(4, "0");
+      const hidden = /[\uFEFF\u200B-\u200D\u2060]/.test(m[0]);
+      add(m.index, m[0], "", { k: hidden ? "r.hidden" : "r.strange", p: { hex } });
+    });
 
-  scan(/([\u0E01-\u0E2E])\1{2,}/g, (m) => add(m.index, m[0], m[1], { k: "r.consRepeat" }));
+    // พยัญชนะซ้ำเกินปกติ
+    scan(/([\u0E01-\u0E2E])\1{2,}/g, (m) => add(m.index, m[0], m[1], { k: "r.consRepeat" }));
 
-  scan(/\b([A-Za-z]{2,})[ \t]+\1\b/gi, (m) => add(m.index, m[0], m[1], { k: "r.enDup" }));
+    // คำอังกฤษซ้ำ
+    scan(/\b([A-Za-z]{2,})[ \t]+\1\b/gi, (m) => add(m.index, m[0], m[1], { k: "r.enDup" }));
 
-  if (opts && opts.spacing) {
+    // [ย้ายมาไว้ที่นี่] กฎการเว้นวรรคไม้ยมก (ตามหลักภาษาไทย)
     scan(/([\u0E01-\u0E45\u0E47-\u0E7F]{1,4})\u0E46/g,
       (m) => add(m.index, m[0], m[1] + " \u0E46", { k: "r.yamokBefore" }));
     scan(/\u0E46[\u0E01-\u0E45\u0E47-\u0E7F]/g,
       (m) => add(m.index, m[0], "\u0E46 " + m[0][1], { k: "r.yamokAfter" }));
+  }
+
+  // ==========================================
+  // 2. CHECK SPACING (ตรวจเฉพาะระยะการเคาะ Spacebar)
+  // ==========================================
+  if (opts && opts.spacing) {
+    // เคาะ Spacebar ซ้ำเกิน 1 ครั้ง (Double Space)
     scan(/ {2,}/g, (m) => add(m.index, m[0], " ", { k: "r.dblSpace" }));
   }
+
   return out;
 }
 
@@ -353,17 +447,36 @@ function goTo(f, btn) {
   if (res.err) { setStatus("" + res.err, RED); return; }
   try {
     let pageObj = null;
+
     try {
-      const tfs = res.range.parentTextFrames;
-      if (tfs.length) pageObj = tfs[0].parentPage;
+      const r = res.range;
+      const tfs = r.parentTextFrames && r.parentTextFrames.length ? r.parentTextFrames : null;
+      if (tfs) {
+        pageObj = tfs[0].parentPage;
+      } else if (r.parent && r.parent.parentPage) {
+        pageObj = r.parent.parentPage;
+      }
     } catch (e) { }
-    if (pageObj) {
-      try {
-        const win = app.activeWindow;
-        if (win.activePage.documentOffset !== pageObj.documentOffset) win.activePage = pageObj;
-      } catch (e) { }
+
+    if (!pageObj) {
+      const resolved = resolvePage(f.positions[idx]);
+      if (resolved) {
+        try {
+          pageObj = app.activeDocument.pages.itemByName(resolved.name);
+        } catch (e) { }
+      }
     }
+
+    if (pageObj && app.activeWindow) {
+      try {
+        app.activeWindow.activePage = pageObj;
+      } catch (e) {
+        console.warn("Failed to set activePage:", e);
+      }
+    }
+
     app.select(res.range);
+
     if (!pageObj) setStatus(tr("e.overset"), RED);
     else setStatus(tr("e.selected", { page: pageObj.name }));
   } catch (e) {
@@ -422,7 +535,7 @@ function makeBtn(label, cls, onClick) {
   return b;
 }
 
-const TAG_KEY = { rule: "tag.rule", cand: "tag.cand", svc: "tag.svc", ai: "tag.ai" };
+const TAG_KEY = { rule: "tag.rule", space: "tag.space", cand: "tag.cand", svc: "tag.svc", ai: "tag.ai" };
 
 function buildCard(f) {
   const card = el("div", "card");
@@ -544,6 +657,9 @@ function renderSoon() {
 function resetCheck() {
   if (running) return setStatus(tr("rst.running"), RED);
   findings = [];
+  if (currentDocId) {
+    docFindingsMap.set(currentDocId, []);
+  }
   renderFindings();
   progressEnd();
   Tele.reset();
@@ -604,6 +720,7 @@ function applyItems(items, chunkUnits, kind, ctx) {
     if (!original || original === suggestion || original.length > MAX_ORIGINAL_LEN || ignoreSet.has(original)) continue;
 
     let rawIssue = String(it.issue || "").trim();
+    if (kind === "svc") rawIssue = "สะกดผิด";
     if (kind === "ai") {
       if (!rawIssue || rawIssue.length > 12 || /สระ|อักขระ|พยัญชนะ|เกิน|ขาด|หาย|หลุด/.test(rawIssue)) {
         rawIssue = "สะกดผิด";
@@ -612,11 +729,14 @@ function applyItems(items, chunkUnits, kind, ctx) {
 
     const positions = [];
     let found = false;
+    const latin = /^[A-Za-z][A-Za-z'\u2019]*$/.test(original);
+    const wordCh = (c) => !!c && /[A-Za-z0-9_]/.test(c);
     for (const u of chunkUnits) {
       let from = 0, at;
       while (positions.length < 50 && (at = u.text.indexOf(original, from)) >= 0) {
         found = true;
-        if (!ctx.taken.has(u.idx + ":" + at)) positions.push({ unit: u, start: at, len: original.length });
+        const edgeOk = !latin || (!wordCh(u.text[at - 1]) && !wordCh(u.text[at + original.length]));
+        if (edgeOk && !ctx.taken.has(u.idx + ":" + at)) positions.push({ unit: u, start: at, len: original.length });
         from = at + original.length;
       }
     }
@@ -640,11 +760,13 @@ async function runCheck() {
   if (app.documents.length === 0) return setStatus(tr("run.noDoc"), RED);
 
   const engineMode = getSelectedEngineMode();
+  const useSpelling = $("chkSpelling") ? $("chkSpelling").checked : true;
   const useRules = $("chkRules") ? $("chkRules").checked : true;
+  const useSpacing = $("chkSpacing") ? $("chkSpacing").checked : true;
+  /* const spacing = $("chkSpacing") ? $("chkSpacing").checked : false; */
   const useService = engineMode === "pythainlp";
   const useAI = engineMode === "ai";
 
-  const spacing = $("chkSpacing") ? $("chkSpacing").checked : false;
   const scope = $("scopeSelect") ? $("scopeSelect").value : "selection";
 
   if ($("disclaimerBox")) $("disclaimerBox").style.display = "none";
@@ -654,7 +776,7 @@ async function runCheck() {
   units = units.filter((u) => wantText(u.text));
   if (!units.length) return setStatus(tr("run.noText"), RED);
 
-  if (useAI) {
+  if (useSpelling && useAI) {
     const profile = activeProfile();
     const pr = presetOf(profile);
     if (!profile.baseUrl) return setStatus(tr("run.noBase"), RED);
@@ -662,13 +784,13 @@ async function runCheck() {
   }
 
   const svcUrl = useService && $("serviceUrl") ? $("serviceUrl").value.trim() : "";
-  if (useService && !svcUrl) return setStatus(tr("run.noSvcUrl"), RED);
+  if (useSpelling && useService && !svcUrl) return setStatus(tr("run.noSvcUrl"), RED);
 
   cancelled = false;
   toggleRunning(true);
 
   try {
-    if (useService) {
+    if (useSpelling && useService) {
       setStatus(tr("run.svcConnecting"));
       try { await serviceHealth(svcUrl); } catch (e) { return setStatus(tr("run.svcDown"), RED); }
     }
@@ -678,11 +800,14 @@ async function runCheck() {
     Tele.reset();
     renderStats();
 
-    if (useRules) {
+    // 1. ตรวจสอบ Rules / Spacing
+    if (useRules || useSpacing) {
       for (const u of units) {
-        for (const r of runRules(u.text, { spacing, th: true, en: true })) {
+        for (const r of runRules(u.text, { rules: useRules, spacing: useSpacing })) {
           if (ignoreSet.has(r.original)) continue;
-          findings.push(makeFinding("rule", r.original, r.suggestion, r.issue, [{ unit: u, start: r.start, len: r.original.length }]));
+
+          const kind = (r.issue && r.issue.k === "r.dblSpace") ? "space" : "rule";
+          findings.push(makeFinding(kind, r.original, r.suggestion, r.issue, [{ unit: u, start: r.start, len: r.original.length }]));
         }
       }
       renderFindings();
@@ -691,74 +816,77 @@ async function runCheck() {
     const ctx = { taken: new Set(), merged: new Map(), stat: { rule: findings.length, ai: 0, svc: 0, dropped: 0 } };
     findings.forEach((f) => f.positions.forEach((p) => ctx.taken.add(p.unit.idx + ":" + p.start)));
 
-    if (useService && !cancelled) {
-      const sc = buildChunks(units);
-      setStatus(tr("run.svcChecking"));
-      progressStart(sc.length, "PyThaiNLP");
+    // 2. ตรวจสอบ Spelling (ถ้าติ๊กเลือกไว้)
+    if (useSpelling) {
+      if (useService && !cancelled) {
+        chunkLimit = 4000;
+        const sc = buildChunks(units);
+        setStatus(tr("run.svcChecking"));
+        progressStart(sc.length, "PyThaiNLP");
 
-      for (let i = 0; i < sc.length; i++) {
-        if (cancelled) break;
-        try {
-          const items = await serviceCheck(svcUrl, sc[i].parts.join("\n"), { th: true, en: true }, 30);
-          applyItems(items, sc[i].units, "svc", ctx);
-        } catch (e) {
-          console.warn("Service check error", e);
-          if (e && (e.network || e.timeout)) {
-            progressEnd();
-            return setStatus(tr("run.svcLost"), RED);
+        let lost = false;
+        await runPool(3, sc.length, async (i) => {
+          if (cancelled || lost) return;
+          try {
+            const items = await serviceCheck(svcUrl, sc[i].parts.join("\n"), { th: true, en: true }, 30);
+            applyItems(items, sc[i].units, "svc", ctx);
+          } catch (e) {
+            console.warn("Service check error", e);
+            if (e && (e.network || e.timeout)) lost = true;
           }
-        }
-        if (live) live.done++;
-        renderSoon();
+          if (live) live.done++;
+          renderSoon();
+        });
+        progressEnd();
+        if (lost) return setStatus(tr("run.svcLost"), RED);
+        renderFindings();
       }
-      progressEnd();
-      renderFindings();
-    }
 
-    if (useAI && !cancelled) {
-      const profile = activeProfile();
-      chunkLimit = profile.chunkLimit;
+      if (useAI && !cancelled) {
+        const profile = activeProfile();
+        chunkLimit = profile.chunkLimit;
 
-      const aiChunks = buildChunks(units);
-      const total = aiChunks.length;
+        const aiChunks = buildChunks(units);
+        const total = aiChunks.length;
 
-      setStatus(tr("run.aiChecking", { name: profile.name, total }));
-      progressStart(total, "AI Engine");
+        setStatus(tr("run.aiChecking", { name: profile.name, total }));
+        progressStart(total, "AI Engine");
 
-      const systemPrompt = $("systemPrompt") ? $("systemPrompt").value.trim() : "";
-      const isThinkOff = profile.think === "off" || profile.think === "disabled" || profile.think === "ปิด";
-      const temperature = typeof profile.temperature === "number" ? profile.temperature : 0.3;
+        const systemPrompt = $("systemPrompt") ? $("systemPrompt").value.trim() : "";
+        const isThinkOff = profile.think === "off" || profile.think === "disabled" || profile.think === "ปิด";
+        const temperature = typeof profile.temperature === "number" ? profile.temperature : 0.3;
 
-      const worker = async (i) => {
-        if (cancelled) return;
-        const chunk = aiChunks[i];
+        const worker = async (i) => {
+          if (cancelled) return;
+          const chunk = aiChunks[i];
 
-        const req = {
-          system: systemPrompt,
-          user: buildUserMessage(chunk.parts.join("\n")),
-          maxTokens: profile.maxTokens,
-          temperature,
-          chat_template_config: { enable_thinking: !isThinkOff },
-          thinking: { type: isThinkOff ? "disabled" : "enabled" },
-          reasoning_effort: isThinkOff ? "none" : (profile.think || "medium")
+          const req = {
+            system: systemPrompt,
+            user: buildUserMessage(chunk.parts.join("\n")),
+            maxTokens: profile.maxTokens,
+            temperature,
+            chat_template_config: { enable_thinking: !isThinkOff },
+            thinking: { type: isThinkOff ? "disabled" : "enabled" },
+            reasoning_effort: isThinkOff ? "none" : (profile.think || "medium")
+          };
+
+          if (live) live.busy++;
+          try {
+            const r = await providerComplete(profile, req);
+            Tele.ok(r, tr("tele.chunk", { i: i + 1, total }));
+            const items = parseModelJson(r.text);
+            if (items) applyItems(items, chunk.units, "ai", ctx);
+          } catch (e) {
+            Tele.failed(tr("tele.chunk", { i: i + 1, total }), friendlyError(e, profile));
+          } finally {
+            if (live) { live.busy--; live.done++; }
+            renderSoon();
+            renderStats();
+          }
         };
 
-        if (live) live.busy++;
-        try {
-          const r = await providerComplete(profile, req);
-          Tele.ok(r, tr("tele.chunk", { i: i + 1, total }));
-          const items = parseModelJson(r.text);
-          if (items) applyItems(items, chunk.units, "ai", ctx);
-        } catch (e) {
-          Tele.failed(tr("tele.chunk", { i: i + 1, total }), friendlyError(e, profile));
-        } finally {
-          if (live) { live.busy--; live.done++; }
-          renderSoon();
-          renderStats();
-        }
-      };
-
-      await runPool(profile.parallel, total, worker);
+        await runPool(profile.parallel, total, worker);
+      }
     }
 
   } finally {
@@ -775,6 +903,11 @@ async function runCheck() {
   } else {
     setStatus(tr("run.found", { n: visibleCount }), GREEN);
     if ($("disclaimerBox")) $("disclaimerBox").style.display = "block";
+  }
+
+  // อัปเดต Map ประจำ Document ID ล่าสุด
+  if (currentDocId) {
+    docFindingsMap.set(currentDocId, findings);
   }
 }
 
@@ -806,16 +939,43 @@ function getPresetPrompt(key) {
 function renderPresetOptions(selectedKey) {
   const sel = $("presetSelect");
   if (!sel) return;
-  sel.innerHTML = "";
-  const add = (k, label) => { const o = el("option", "", label); o.value = k; sel.appendChild(o); };
+  const opts = [];
+  const add = (k, label) => opts.push({ value: k, label });
 
   Object.keys(BUILTIN_PRESETS).forEach((k) => add(k, BUILTIN_PRESETS[k].name));
   Object.keys(customPresets).forEach((k) => add(k, "* " + customPresets[k].name));
 
-  sel.value = BUILTIN_PRESETS[selectedKey] || customPresets[selectedKey] ? selectedKey : "strict_proofread";
+  ddFill(sel, opts, BUILTIN_PRESETS[selectedKey] || customPresets[selectedKey] ? selectedKey : "strict_proofread");
   if ($("systemPrompt")) {
     $("systemPrompt").value = getPresetPrompt(sel.value);
   }
+  applyPresetMode();
+}
+
+function presetKey() {
+  return $("presetSelect") ? $("presetSelect").value : "";
+}
+
+function setDisabled(el, on) {
+  if (!el) return;
+  if (on) el.setAttribute("disabled", "");
+  else el.removeAttribute("disabled");
+  try { el.disabled = !!on; } catch (e) { /* ignore */ }
+}
+
+function showEl(id, on, display) {
+  if ($(id)) $(id).style.display = on ? display : "none";
+}
+
+function applyPresetMode() {
+  const busy = presetMode !== "view";
+  const custom = !!customPresets[presetKey()];
+  setDisabled($("systemPrompt"), !busy);
+  setDisabled($("btnEditPreset"), !custom);
+  setDisabled($("btnDeletePreset"), !custom);
+  showEl("presetNameBox", busy, "block");
+  showEl("presetViewBtns", !busy, "flex");
+  showEl("presetEditBtns", busy, "flex");
 }
 
 function disarmDelete() {
@@ -829,15 +989,50 @@ function initPresets() {
 
   if ($("presetSelect")) {
     $("presetSelect").addEventListener("change", () => {
+      presetMode = "view";
+      if ($("presetName")) $("presetName").value = "";
       if ($("systemPrompt")) $("systemPrompt").value = getPresetPrompt($("presetSelect").value);
       disarmDelete();
+      applyPresetMode();
     });
   }
 
   if ($("btnResetPrompt")) {
     $("btnResetPrompt").addEventListener("click", () => {
+      presetMode = "view";
+      if ($("presetName")) $("presetName").value = "";
       renderPresetOptions("strict_proofread");
       disarmDelete();
+    });
+  }
+
+  if ($("btnAddPreset")) {
+    $("btnAddPreset").addEventListener("click", () => {
+      presetMode = "add";
+      disarmDelete();
+      if ($("presetName")) $("presetName").value = "";
+      if ($("systemPrompt")) $("systemPrompt").value = "";
+      applyPresetMode();
+    });
+  }
+
+  if ($("btnEditPreset")) {
+    $("btnEditPreset").addEventListener("click", () => {
+      const key = presetKey();
+      if (!customPresets[key]) return;
+      presetMode = "edit";
+      disarmDelete();
+      if ($("presetName")) $("presetName").value = customPresets[key].name;
+      applyPresetMode();
+    });
+  }
+
+  if ($("btnCancelPreset")) {
+    $("btnCancelPreset").addEventListener("click", () => {
+      presetMode = "view";
+      if ($("presetName")) $("presetName").value = "";
+      if ($("systemPrompt")) $("systemPrompt").value = getPresetPrompt(presetKey());
+      applyPresetMode();
     });
   }
 
@@ -845,14 +1040,24 @@ function initPresets() {
     $("btnSavePreset").addEventListener("click", () => {
       const prompt = $("systemPrompt") ? $("systemPrompt").value.trim() : "";
       const name = $("presetName") ? $("presetName").value.trim() : "";
-      if (!prompt) return setStatus(tr("ps.noPrompt"), RED);
       if (!name) return setStatus(tr("ps.noName"), RED);
-      const key = "custom_" + Date.now();
+      if (!prompt) return setStatus(tr("ps.noPrompt"), RED);
+      const editing = presetMode === "edit";
+      const key = editing ? presetKey() : "custom_" + Date.now();
+      if (editing && !customPresets[key]) return;
       customPresets[key] = { name, prompt };
       lsSet(K_PRESETS, customPresets);
-      renderPresetOptions(key);
+      presetMode = "view";
       if ($("presetName")) $("presetName").value = "";
-      setStatus(tr("ps.saved"), GREEN);
+      renderPresetOptions(key);
+      setStatus(tr(editing ? "ps.updated" : "ps.saved"), GREEN);
+    });
+  }
+
+  if ($("btnCloseServiceHelp")) {
+    $("btnCloseServiceHelp").addEventListener("click", () => {
+      const box = $("serviceHelp");
+      if (box) box.style.display = "none";
     });
   }
 
@@ -935,12 +1140,73 @@ function onUiLangChange(lang) {
   refreshLangUI();
 }
 
+function bindAutoSelect(elementId) {
+  const el = $(elementId);
+  if (!el) return;
+  el.addEventListener("click", () => {
+    try {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } catch (e) {
+      console.warn("Select text failed:", e);
+    }
+  });
+}
+
+async function copyToClipboard(text) {
+  if (!text) return;
+  try {
+    const { clipboard } = require("uxp");
+    if (clipboard) {
+      await clipboard.setContent({ "text/plain": text });
+      setStatus(uiLang === "th" ? "คัดลอกคำสั่งเรียบร้อยแล้ว!" : "Command copied to clipboard!", GREEN);
+    } else {
+      throw new Error("UXP Clipboard API not available");
+    }
+  } catch (err) {
+    console.warn("Clipboard write failed:", err);
+    setStatus(uiLang === "th" ? "คัดลอกไม่สำเร็จ" : "Failed to copy text.", RED);
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setStatus(uiLang === "th" ? "คัดลอกคำสั่งเรียบร้อยแล้ว!" : "Command copied to clipboard!", GREEN);
+    } catch (fallbackErr) {
+      console.error("Fallback copy failed:", fallbackErr);
+      setStatus(uiLang === "th" ? "คัดลอกไม่สำเร็จ" : "Failed to copy text.", RED);
+    }
+  }
+}
+
+function lockWheelOnFields() {
+  const block = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  const locked = new WeakSet();
+  const attach = () => {
+    document.querySelectorAll("select, sp-dropdown, input, textarea, sp-textarea").forEach((n) => {
+      if (locked.has(n)) return;
+      locked.add(n);
+      n.addEventListener("wheel", block, { passive: false, capture: true });
+    });
+  };
+  attach();
+  document.addEventListener("wheel", (e) => {
+    const t = e.target && e.target.tagName ? e.target.tagName.toLowerCase() : "";
+    if (t === "select" || t === "sp-dropdown" || t === "input" || t === "textarea" || t === "sp-textarea") block(e);
+  }, { passive: false, capture: true });
+}
+
 function init() {
   applyI18n();
   updateLangButtons();
   if ($("langTH")) $("langTH").addEventListener("click", () => onUiLangChange("th"));
   if ($("langEN")) $("langEN").addEventListener("click", () => onUiLangChange("en"));
   initAccordions();
+  lockWheelOnFields();
   ignoreSet = new Set(lsGet(K_IGNORE, []));
 
   initSegmenter();
@@ -949,11 +1215,102 @@ function init() {
   initPresets();
   initSettings();
 
+  if ($("btnSaveServerScript")) {
+    $("btnSaveServerScript").addEventListener("click", async () => {
+      try {
+        const { storage } = require("uxp");
+        const pluginFolder = await storage.localFileSystem.getPluginFolder();
+        const scriptEntry = await pluginFolder.getEntry("spellcheck_server.py");
+        const scriptContent = await scriptEntry.read();
+
+        const targetFile = await storage.localFileSystem.getFileForSaving("spellcheck_server.py", {
+          types: ["py"]
+        });
+
+        if (targetFile) {
+          await targetFile.write(scriptContent);
+          const savedScriptFullPath = targetFile.nativePath;
+
+          lsSet("ai_proofread_saved_script_path", savedScriptFullPath);
+
+          const runCommand = `python "${savedScriptFullPath}"`;
+          if ($("runCmdCode")) $("runCmdCode").textContent = runCommand;
+          if ($("savedScriptPath")) $("savedScriptPath").textContent = `Saved: ${savedScriptFullPath}`;
+
+          setStatus(uiLang === "th" ? "บันทึกไฟล์ spellcheck_server.py เรียบร้อยแล้ว!" : "Script saved successfully!", GREEN);
+        }
+      } catch (e) {
+        console.warn("Failed to save script:", e);
+        setStatus(uiLang === "th" ? "ไม่สามารถบันทึกไฟล์ได้" : "Failed to save script file.", RED);
+      }
+    });
+  }
+
+  if ($("btnSaveLauncher")) {
+    $("btnSaveLauncher").addEventListener("click", async () => {
+      try {
+        const { storage } = require("uxp");
+
+        const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+        const sourceFileName = isMac ? "spellcheck_launcher.command" : "spellcheck_launcher.bat";
+        const fileExt = isMac ? "command" : "bat";
+
+        const pluginFolder = await storage.localFileSystem.getPluginFolder();
+        const launcherEntry = await pluginFolder.getEntry(sourceFileName);
+        const launcherContent = await launcherEntry.read();
+
+        const targetFile = await storage.localFileSystem.getFileForSaving(sourceFileName, {
+          types: [fileExt]
+        });
+
+        if (targetFile) {
+          await targetFile.write(launcherContent);
+          setStatus(
+            uiLang === "th"
+              ? `บันทึกไฟล์ ${sourceFileName} เรียบร้อยแล้ว!`
+              : `Saved ${sourceFileName} successfully!`,
+            GREEN
+          );
+        }
+      } catch (e) {
+        console.warn("Failed to save launcher file:", e);
+        setStatus(
+          uiLang === "th" ? "ไม่สามารถบันทึกไฟล์ตัวรันได้" : "Failed to save launcher file.",
+          RED);
+      }
+    });
+  }
+
+  function updateSavedPathUI(path) {
+    if (!path) return;
+    const runCommand = `python "${path}"`;
+    if ($("runCmdCode")) $("runCmdCode").textContent = runCommand;
+    if ($("savedScriptPath")) $("savedScriptPath").textContent = `Saved to: ${path}`;
+  }
+
+  if ($("linkPython")) {
+    $("linkPython").addEventListener("click", () => {
+      openLink("[https://www.python.org/downloads/](https://www.python.org/downloads/)");
+    });
+  }
+
+  if ($("btnCopyPip")) {
+    $("btnCopyPip").addEventListener("click", async () => {
+      const text = $("pipInstallCode") ? $("pipInstallCode").textContent.trim() : "";
+      await copyToClipboard(text);
+    });
+  }
+
+  if ($("btnCopyRun")) {
+    $("btnCopyRun").addEventListener("click", async () => {
+      const text = $("runCmdCode") ? $("runCmdCode").textContent.trim() : "";
+      await copyToClipboard(text);
+    });
+  }
+
   if ($("btnClearIgnore")) {
     $("btnClearIgnore").addEventListener("click", () => {
       ignoreSet.clear();
-      dict = null;
-      enDict = null;
       lsSet(K_IGNORE, []);
       updateIgnoreLabel();
       setStatus(tr("ign.cleared"));
@@ -963,6 +1320,9 @@ function init() {
   if ($("btnCheck")) $("btnCheck").addEventListener("click", runCheck);
   if ($("btnResetAll")) $("btnResetAll").addEventListener("click", resetCheck);
   if ($("btnCancel")) $("btnCancel").addEventListener("click", () => { cancelled = true; setStatus(tr("run.stopping")); });
+
+  // เช็ก Document ปัจจุบันทันทีที่เปิด Plugin
+  syncStateWithActiveDocument();
 }
 
 init();

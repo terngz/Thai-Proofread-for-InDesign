@@ -3,683 +3,7 @@
 
 <head>
   <meta charset="utf-8">
-  <style>
-    html {
-      --bg: #262626;
-      --surface: #2E2E2E;
-      --surface-hi: #383838;
-      --bd: #454545;
-      --fg: #EDEDED;
-      --fg2: #A6A6A6;
-      --accent: #27ADF5;
-      --accent-bg: #1769E0;
-      --accent-soft: rgb(13, 102, 208);
-      --err: #db3529;
-      --ok: #5DDC8F;
-      --input-bg: #1F1F1F;
-      --input-fg: #FFFFFF;
-    }
-
-    @media (prefers-color-scheme: light) {
-      html {
-        --bg: #F4F4F5;
-        --surface: #FFFFFF;
-        --surface-hi: #EDEDF0;
-        --bd: #DCDCE0;
-        --fg: #1F1F22;
-        --fg2: #6B6B73;
-        --accent: #1769E0;
-        --accent-bg: #1769E0;
-        --accent-soft: rgba(23, 105, 224, 0.10);
-        --err: #C62828;
-        --ok: #1B8A47;
-        --input-bg: #FFFFFF;
-        --input-fg: #1F1F22;
-      }
-    }
-
-    html,
-    body {
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      background-color: var(--bg);
-      color: var(--fg);
-      font-size: 13px;
-    }
-
-    #app {
-      box-sizing: border-box;
-      height: 100%;
-      padding: 16px 12px;
-      overflow-y: auto;
-      background-color: var(--bg);
-      color: var(--fg);
-    }
-
-    .title-row {
-      display: flex;
-      flex-direction: row;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    h3 {
-      margin: 0;
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--fg);
-    }
-
-    .sub {
-      margin: 2px 0 16px 0;
-      font-size: 11px;
-      color: var(--fg2);
-    }
-
-    .header-btns {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-    }
-
-    .icon-btn {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      justify-content: center;
-      width: 22px;
-      height: 22px;
-      margin-left: 6px;
-      border: 1px solid var(--bd);
-      border-radius: 11px;
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--fg2);
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .icon-btn:hover {
-      color: var(--accent);
-      border-color: var(--accent);
-    }
-
-    .icon-btn.sm {
-      width: 18px;
-      height: 18px;
-      border-radius: 9px;
-      font-size: 10px;
-      margin-left: 0;
-    }
-
-    .subpanel {
-      margin: 0 0 12px 0;
-      padding: 12px;
-      border: 1px solid var(--bd);
-      border-radius: 8px;
-      background-color: var(--surface);
-      font-size: 11px;
-      line-height: 1.55;
-      color: var(--fg2);
-    }
-
-    .subpanel>div {
-      margin-bottom: 4px;
-    }
-
-    .subpanel>div:last-child {
-      margin-bottom: 0;
-    }
-
-    .help-title {
-      margin-bottom: 8px !important;
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--fg);
-    }
-
-    .help-scroll {
-      max-height: 240px;
-      overflow-y: auto;
-    }
-
-    .about-foot {
-      margin-top: 12px !important;
-    }
-
-    button.btn-kofi {
-      flex-basis: auto;
-      min-width: auto;
-      color: #FFFFFF;
-      font-weight: 700;
-    }
-
-    .help-foot {
-      margin-top: 8px;
-      text-align: right;
-    }
-
-    .code {
-      margin: 4px 0 8px 0;
-      padding: 6px 8px;
-      border-radius: 4px;
-      background-color: var(--bg);
-      color: var(--ok);
-      font-family: monospace;
-      font-size: 11px;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-
-    .acc {
-      margin: 0 0 8px 0;
-      border: 1px solid var(--bd);
-      border-radius: 8px;
-      background-color: var(--surface);
-    }
-
-    .acc-head {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 12px;
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--fg);
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .acc-ind {
-      font-weight: 400;
-      font-size: 14px;
-      color: var(--fg2);
-    }
-
-    .acc-body {
-      padding: 12px;
-      border-top: 1px solid var(--bd);
-    }
-
-    .config-box .acc {
-      background-color: var(--bg);
-    }
-
-    .config-box {
-      margin-top: 12px;
-    }
-
-    .seg-group {
-      display: flex;
-      flex-direction: row;
-      padding: 5px;
-      border-radius: 10px;
-      background-color: var(--bg);
-    }
-
-    .seg {
-      flex: 1;
-      padding: 8px 8px;
-      border-radius: 7px;
-      text-align: center;
-      font-size: 13px;
-      color: var(--fg2);
-      cursor: pointer;
-      user-select: none;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      text-align: center !important;
-    }
-
-    .seg:hover {
-      color: var(--fg);
-    }
-
-    .seg.active {
-      background-color: var(--accent-soft);
-      color: var(--fg);
-      font-weight: 700;
-    }
-
-    .seg input[type="radio"] {
-      display: none;
-    }
-
-    .hint {
-      margin: 8px 0 0 0;
-      font-size: 11px;
-      line-height: 1.5;
-      color: var(--fg2);
-    }
-
-    .field {
-      margin: 0 0 12px 0;
-    }
-
-    .field:last-child {
-      margin-bottom: 0;
-    }
-
-    .lbl {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      justify-content: space-between;
-      margin: 0 0 4px 0;
-      font-size: 11px;
-      color: var(--fg2);
-    }
-
-    .row {
-      display: flex;
-      flex-direction: row;
-    }
-
-    .row>div {
-      margin-right: 8px;
-    }
-
-    .row>div:last-child {
-      margin-right: 0;
-    }
-
-    select,
-    input[type="text"],
-    input[type="number"],
-    input[type="password"],
-    textarea {
-      width: 100%;
-      margin: 0;
-      padding: 4px 8px;
-      box-sizing: border-box;
-      color: var(--input-fg) !important;
-      background-color: var(--input-bg) !important;
-      border: 0px solid var(--bd) !important;
-    }
-
-    select option {
-      background-color: var(--input-bg);
-      color: var(--input-fg);
-    }
-
-    textarea {
-      height: 110px;
-      line-height: 1.5;
-    }
-
-    #logBox {
-      height: 130px;
-      font-size: 11px;
-    }
-
-    .chk {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      margin: 0 0 0px 0;
-      font-size: 12px;
-      cursor: pointer;
-    }
-
-    .chk:last-child {
-      margin-bottom: 0;
-    }
-
-    .chk span {
-      margin-left: 6px;
-      line-height: 1.5;
-      color: var(--fg) !important;
-    }
-
-    .inline-row {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-    }
-
-    .inline-row input[type="text"] {
-      flex: 1;
-      height: 28px;
-      margin-right: 8px;
-    }
-
-    .preset-row {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      margin-top: 8px;
-    }
-
-    .preset-row input[type="text"] {
-      flex: 1;
-      height: 28px;
-      margin-right: 8px;
-    }
-
-    .btn,
-    button {
-      height: 22px;
-      margin: 0;
-      padding: 0 12px;
-      box-sizing: border-box;
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      justify-content: center;
-      white-space: nowrap;
-      font-size: 12px;
-      border-radius: 0;
-      cursor: pointer;
-    }
-
-    button:hover {
-      border-color: var(--accent) !important;
-    }
-
-    button.btn-text {
-      height: 22px;
-      padding: 0 8px;
-      font-size: 11px;
-      color: var(--fg2) !important;
-      background-color: transparent !important;
-      border-color: transparent !important;
-    }
-
-    button.btn-text:hover {
-      color: var(--accent) !important;
-    }
-
-    button.btn-danger {
-      color: var(--err) !important;
-    }
-
-    .btn-line {
-      display: flex !important;
-      flex-direction: row !important;
-      flex-wrap: wrap !important;
-      margin-top: 10px !important;
-      margin-left: -4px !important;
-      margin-right: -4px !important;
-    }
-
-    .btn-line button {
-      flex-basis: auto !important;
-      min-width: auto !important;
-      height: 22px !important;
-      margin: 4px !important;
-      padding: 0 12px !important;
-      font-size: 11px !important;
-    }
-
-    .btn-line button:last-child {
-      margin-right: 0;
-    }
-
-    .preset-row button,
-    .inline-row button {
-      flex: none;
-      margin-right: 8px;
-    }
-
-    .preset-row button:last-child,
-    .inline-row button:last-child {
-      margin-right: 0;
-    }
-
-    .link {
-      color: var(--accent);
-      font-size: 11px;
-      cursor: pointer;
-    }
-
-    sp-button {
-      width: 100%;
-      margin: 8px 0;
-      align-items: center;
-      text-align: center;
-    }
-
-    #btnCancel {
-      display: none;
-    }
-
-    #status {
-      margin: 0 0 8px 0;
-      padding: 8px 12px;
-      border: 1px solid var(--bd);
-      border-left: 3px solid var(--bd);
-      border-radius: 6px;
-      background-color: var(--surface);
-      font-size: 12px;
-      line-height: 1.5;
-      color: var(--fg);
-    }
-
-    #status.err {
-      color: var(--err);
-      border-left-color: var(--err);
-    }
-
-    #status.ok {
-      color: var(--ok);
-      border-left-color: var(--ok);
-    }
-
-    .disclaimer-box {
-      margin: 0 0 8px 0;
-      padding: 8px 12px;
-      border-radius: 6px;
-      background-color: #C62828;
-      color: #FFFFFF;
-      font-size: 11px;
-      line-height: 1.4;
-      font-weight: 500;
-    }
-
-    #progressWrap {
-      margin: 0 0 8px 0;
-    }
-
-    #progressTrack {
-      height: 4px;
-      border-radius: 2px;
-      background-color: var(--surface-hi);
-    }
-
-    #progressFill {
-      height: 100%;
-      width: 0%;
-      border-radius: 2px;
-      background-color: var(--accent);
-    }
-
-    #progressText,
-    #statsLine {
-      margin: 4px 0 0 0;
-      font-size: 11px;
-      color: var(--fg2);
-    }
-
-    #statsLine {
-      margin-bottom: 8px;
-    }
-
-    #connResult,
-    #serviceResult,
-    #modelInfo {
-      margin-top: 8px;
-      font-size: 11px;
-      line-height: 1.5;
-      color: var(--fg2);
-    }
-
-    #modelInfo {
-      margin-top: 4px;
-    }
-
-    #connResult.ok,
-    #serviceResult.ok {
-      color: var(--ok);
-    }
-
-    #connResult.err,
-    #serviceResult.err {
-      color: var(--err);
-    }
-
-    .issue {
-      margin-top: 4px;
-      font-size: 11px;
-      line-height: 1.5;
-      color: var(--fg2);
-    }
-
-    .dot {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      margin-left: 8px;
-      border-radius: 4px;
-      background-color: #8E8E93;
-    }
-
-    .dot.ok {
-      background-color: var(--ok);
-    }
-
-    .dot.bad {
-      background-color: var(--err);
-    }
-
-    .card {
-      margin: 0 0 8px 0;
-      padding: 12px;
-      border: 1px solid var(--bd);
-      border-radius: 8px;
-      background-color: var(--surface);
-      color: var(--fg);
-    }
-
-    .card-top {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 8px;
-    }
-
-    .card-page {
-      font-size: 11px;
-      color: var(--fg2);
-    }
-
-    .card-word {
-      font-size: 14px;
-      font-weight: 700;
-      line-height: 1.5;
-      word-break: break-all;
-    }
-
-    .w-err {
-      color: var(--err);
-    }
-
-    .w-arrow {
-      margin: 0 8px;
-      font-weight: 400;
-      color: var(--fg2);
-    }
-
-    .w-ok {
-      color: var(--ok);
-    }
-
-    .card-actions {
-      display: flex;
-      flex-direction: row;
-      margin-top: 12px;
-    }
-
-    .card-actions button {
-      flex: 1;
-      margin-right: 8px;
-    }
-
-    .card-actions button:last-child {
-      margin-right: 0;
-    }
-
-    .card-more {
-      display: flex;
-      flex-direction: row;
-      justify-content: flex-end;
-      margin-top: 4px;
-    }
-
-    .tag {
-      padding: 1px 8px;
-      border-radius: 8px;
-      font-size: 10px;
-      font-weight: 700;
-      color: #000000;
-    }
-
-    .tag-rule {
-      background-color: #FFB340;
-    }
-
-    .tag-ai {
-      background-color: #64D2FF;
-    }
-
-    .tag-cand {
-      background-color: #C7C7CC;
-    }
-
-    .tag-svc {
-      background-color: #7EDDB0;
-    }
-
-    .lang-switch {
-      display: flex;
-      flex-direction: row;
-      align-items: center;
-      height: 22px;
-      margin-right: 6px;
-      padding: 0 2px;
-      border: 1px solid var(--bd);
-      border-radius: 11px;
-    }
-
-    .lang-btn {
-      padding: 2px 8px;
-      border-radius: 9px;
-      font-size: 10px;
-      font-weight: 700;
-      color: var(--fg2);
-      cursor: pointer;
-      user-select: none;
-    }
-
-    .lang-btn.active {
-      background-color: var(--accent-soft);
-      color: var(--fg);
-    }
-
-    .footer {
-      display: flex;
-      flex-direction: row;
-      justify-content: center;
-      margin: 16px 0 4px 0;
-    }
-
-    .footer .link {
-      margin: 0 8px;
-    }
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
@@ -696,84 +20,136 @@
         <span id="btnAbout" class="icon-btn">i</span>
       </div>
     </div>
-    <p class="sub" data-i18n="hdr.sub">Thai / English proofreading</p>
+    <p class="sub" data-i18n="hdr.sub"></p>
 
-    <div id="aboutBox" class="subpanel" style="display: none;">
+    <div id="aboutBox" class="subpanel stack" style="display: none;">
       <div class="help-title">Thai AI Proofreader</div>
-      <div data-i18n="about.desc">Thai and English proofreading plugin for Adobe InDesign, powered by PyThaiNLP and AI engines</div>
-      <div><span data-i18n="about.ver">Version</span> <span id="aboutVersion"></span></div>
-      <div><span id="btnOpenChangelog" class="link" style="display: none;" data-i18n="about.new">What's new in v{version} ↗</span></div>
+      <div data-i18n="about.desc"></div>
+      <div><span data-i18n="about.ver"></span> <span id="aboutVersion"></span></div>
+      <div><span id="btnOpenChangelog" class="link" style="display: none;" data-i18n="about.new"></span></div>
       <div>©2026 Konnext Group. All rights reserved.</div>
-      <div class="about-foot"><button id="btnKofi" class="btn-kofi" data-i18n="about.kofi">Support me on Ko-fi</button></div>
+      <div class="about-foot"><button id="btnKofi" class="btn-kofi" data-i18n="about.kofi"></button></div>
+
+      <!-- ==================== ส่วน LICENSE & DISCLAIMER ==================== -->
+      <hr class="divider">
+      <div class="lic">
+        <div class="lic-title" data-i18n="about.licTitle"></div>
+
+        <div class="lic-line" data-i18n="about.pythainlpLic"></div>
+        <div class="lic-line last" data-i18n="about.pyspellLic"></div>
+
+        <div class="lic-title" data-i18n="about.discTitle"></div>
+
+        <div data-i18n="about.discBody"></div>
+      </div>
+      <!-- =================================================================== -->
+
     </div>
 
     <div id="helpBox" class="subpanel" style="display: none;">
-      <div class="help-title" data-i18n="help.title">User guide</div>
+      <div class="help-title" data-i18n="help.title"></div>
       <div class="help-scroll">
-        <div style="margin-bottom: 6px;">
-          <div><b data-i18n="help.s1">1. Choose the main checker</b></div>
-          <div style="padding-left: 16px;" data-i18n="help.s1a">PyThaiNLP: fast offline spell check (requires spellcheck_server.py)</div>
-          <div style="padding-left: 16px;" data-i18n="help.s1b">AI Engine: context-aware check (LM Studio / Ollama / Cloud API)</div>
+        <div class="help-sec">
+          <div><b data-i18n="help.s1"></b></div>
+          <div class="help-item" data-i18n="help.s1a"></div>
+          <div class="help-item" data-i18n="help.s1b"></div>
         </div>
 
-        <div style="margin-bottom: 6px;">
-          <div><b data-i18n="help.s2">2. Run the check</b></div>
-          <div style="padding-left: 16px;" data-i18n="help.s2a">Choose the scope, then press "Check"</div>
+        <div class="help-sec">
+          <div><b data-i18n="help.s2"></b></div>
+          <div class="help-item" data-i18n="help.s2a"></div>
         </div>
 
-        <div style="margin-bottom: 6px;">
-          <div><b data-i18n="help.s3">3. Handle the results</b></div>
-          <div style="padding-left: 16px;" data-i18n="help.s3a">Press "Go to" to select the word in InDesign, or "Fix" to correct it right away</div>
+        <div class="help-sec">
+          <div><b data-i18n="help.s3"></b></div>
+          <div class="help-item" data-i18n="help.s3a"></div>
         </div>
 
-        <div style="margin-top: 14px;">
-          <div><b data-i18n="help.s4">Requirements</b></div>
-          <div style="padding-left: 16px;" data-i18n="help.s4a">Python 3.9+ for PyThaiNLP mode, or an active API key / local server for AI mode.</div>
+        <div class="help-sec">
+          <div><b data-i18n="help.s4"></b></div>
+          <div class="help-item" data-i18n="help.s4a"></div>
         </div>
       </div>
-      <div class="help-foot" style="margin-top: 10px;">
-        <span id="btnOpenGithub" class="link" data-i18n="help.gh">Open the full guide on GitHub ↗</span>
+      <div class="help-foot">
+        <span id="btnOpenGithub" class="link" data-i18n="help.gh"></span>
       </div>
     </div>
 
     <div class="acc" id="accEngine" data-open="1">
-      <div class="acc-head"><span data-i18n="sec.engine">Main checker</span><span class="acc-ind">−</span></div>
+      <div class="acc-head"><span data-i18n="sec.engine"></span><span class="acc-ind">−</span></div>
+
       <div class="acc-body">
 
         <div class="seg-group">
           <label class="seg" id="boxPyThaiNLP">
-            <input type="radio" name="engineMode" id="modePyThaiNLP" value="pythainlp" checked>
+            <input type="radio" name="engineMode" id="modePyThaiNLP" value="pythainlp">
             <span>PyThaiNLP</span>
           </label>
           <label class="seg" id="boxAI">
-            <input type="radio" name="engineMode" id="modeAI" value="ai">
+            <input type="radio" name="engineMode" id="modeAI" value="ai" checked>
             <span>AI Engine</span>
           </label>
         </div>
         <div id="engineDesc" class="hint"></div>
 
         <div id="pythainlpConfigBox" class="config-box">
+
+          <div class="hint"><span data-i18n="svc.url"></span></div>
+
+          <div class="inline-row">
+            <sp-textfield id="serviceUrl" value="http://127.0.0.1:8765"></sp-textfield>
+          </div>
+          <span class="code-row">
+            <sp-button variant="primary" id="btnServiceTest" data-i18n="btn.test"></sp-button>
+            <sp-button variant="primary" id="btnServiceHelp" data-i18n="btn.setupGuide"></sp-button>
+          </span>
+          <div id="serviceResult" style="margin: 8px;"></div>
+
+
           <div class="field">
-            <div class="lbl">
-              <span data-i18n="svc.url">Spell-check service URL</span>
-              <span id="btnServiceHelp" class="icon-btn sm">?</span>
-            </div>
             <div id="serviceHelp" class="subpanel" style="display: none;">
-              <div class="help-title" data-i18n="svc.h.title">How to install and run the spell-check service</div>
-              <div data-i18n="svc.h.1">1. Install Python 3.9 or later (download from python.org)</div>
-              <div data-i18n="svc.h.2">2. Open PowerShell (Windows) or Terminal (Mac) and install the packages (one time only):</div>
-              <div class="code">pip install pythainlp pyspellchecker</div>
-              <div data-i18n="svc.h.3">3. Run the service using the full path of the saved spellcheck_server.py (you can drag the file into the window):</div>
-              <div class="code">python "C:\{your save path}\spellcheck_server.py"</div>
-              <div data-i18n="svc.h.4">4. When you see "spellcheck service on http://127.0.0.1:8765" it is ready. Keep that window open while you work.</div>
-              <div data-i18n="svc.h.5">5. Come back and press "Test"</div>
-              <div class="issue" data-i18n="svc.h.note">To change the port: python spellcheck_server.py --port 9000, then update the URL to match. See README.md for details.</div>
+
+              <div class="help-title svc-title">
+                <span data-i18n="svc.h.title"></span>
+                <span id="btnCloseServiceHelp" class="icon-btn sm" title="Close">✕</span>
+              </div>
+
+              <!-- ข้อ 1: ดาวน์โหลด Python -->
+              <div class="help-sec">
+                <span data-i18n="svc.h.1_prefix"></span>
+                <span id="linkPython" class="link">python.org ↗</span>
+                <span data-i18n="svc.h.1_suffix"></span>
+              </div>
+
+              <!-- ข้อ 2: pip install -->
+              <div data-i18n="svc.h.2"></div>
+              <div class="code-row" style="padding-left: 10px;">
+                <div class="code" id="pipInstallCode">pip install pythainlp pyspellchecker</div>
+                <sp-button variant="secondary" id="btnCopyPip">Copy</sp-button>
+              </div>
+
+              <!-- ข้อ 3: บันทึกสคริปต์หลัก และ Server Launcher -->
+              <div data-i18n="svc.h.3"></div>
+              <div class="code-row" style="padding-left: 10px;">
+                <sp-button variant="secondary" id="btnSaveServerScript" data-i18n="svc.h.saveScript"></sp-button>
+                <sp-button variant="secondary" id="btnSaveLauncher" data-i18n="svc.h.saveLauncher"></sp-button>
+              </div>
+              <div id="savedScriptPath" class="issue gap"></div>
+
+              <!-- ข้อ 4: เลือกรันผ่านคำสั่ง หรือ ดับเบิลคลิกไฟล์ Launcher -->
+              <div data-i18n="svc.h.4"></div>
+              <div class="code-row" style="padding-left: 10px;">
+                <div class="code" id="runCmdCode">python "spellcheck_server.py"</div>
+                <sp-button variant="secondary" id="btnCopyRun">Copy</sp-button>
+              </div>
+              <div class="issue gap" data-i18n="svc.h.4_or"></div>
+
+              <!-- ข้อ 5: เมื่อเซิร์ฟเวอร์รันเรียบร้อย -->
+              <div data-i18n="svc.h.5"></div>
+              <div class="issue" data-i18n="svc.h.note"></div>
+
             </div>
-            <div class="inline-row">
-              <input type="text" id="serviceUrl" value="http://127.0.0.1:8765">
-              <button id="btnServiceTest" data-i18n="btn.test">Test</button>
-            </div>
-            <div id="serviceResult"></div>
+
           </div>
         </div>
 
@@ -786,128 +162,147 @@
             </div>
             <div class="acc-body">
               <div class="field row">
-                <div style="flex: 1;">
-                  <div class="lbl"><span data-i18n="mdl.profile">Profile</span><span id="btnConnSettings" class="link" data-i18n="mdl.settings">Settings</span></div>
-                  <select id="profileSelect"></select>
+                <div class="col">
+                  <div class="lbl"><span data-i18n="mdl.profile"></span><span id="btnConnSettings" class="link"
+                      data-i18n="mdl.settings"></span></div>
+                  <sp-dropdown id="profileSelect"><sp-menu slot="options"></sp-menu></sp-dropdown>
                 </div>
-                <div style="flex: 1;">
-                  <div class="lbl"><span data-i18n="mdl.model">Model</span><span id="btnRefreshModels" class="link" data-i18n="mdl.refresh">Refresh</span></div>
-                  <select id="modelSelect">
-                    <option value="" data-i18n="mdl.connecting">Connecting...</option>
-                  </select>
+                <div class="col">
+                  <div class="lbl"><span data-i18n="mdl.model"></span><span id="btnRefreshModels" class="link"
+                      data-i18n="mdl.refresh"></span></div>
+                  <sp-dropdown id="modelSelect">
+                    <sp-menu slot="options">
+                      <sp-menu-item value="" data-i18n="mdl.connecting"></sp-menu-item>
+                    </sp-menu>
+                  </sp-dropdown>
                 </div>
               </div>
-              <div id="modelInfo"></div>
+              <div class="code-row">
+                  <sp-button variant="primary" id="btnConnTest" data-i18n="conn.test"></sp-button>
+                  <sp-button variant="primary" id="btnSelfTest" data-i18n="conn.selfTest"></sp-button>
+                  <div id="modelInfo"></div>
+                  <div id="connResult"></div>
+                
+              </div>
 
-              <div id="connPanel" class="subpanel" style="display: none; margin: 12px 0 0 0;">
+              <div id="connPanel" class="subpanel conn-panel" style="display: none;">
 
-                <div class="btn-line" style="margin-top: 0; margin-bottom: 12px;">
-                  <button id="btnConnNew" data-i18n="conn.new">Add new profile</button>
-                  <button id="btnConnDelete" class="btn-danger" data-i18n="conn.delete">Delete profile</button>
+                <div class="btn-line flush">
+                  <sp-button variant="cta" id="btnConnNew" data-i18n="conn.new"></sp-button>
+                  <sp-button variant="warning" id="btnConnDelete" class="btn-danger"
+                    data-i18n="conn.delete"></sp-button>
                 </div>
 
                 <div class="field">
-                  <div class="lbl"><span data-i18n="conn.provider">Provider</span></div>
-                  <select id="connPreset"></select>
+                  <div class="lbl"><span data-i18n="conn.provider"></span></div>
+                  <sp-dropdown id="connPreset"><sp-menu slot="options"></sp-menu></sp-dropdown>
                 </div>
                 <div class="field">
-                  <div class="lbl"><span data-i18n="conn.name">Profile name</span></div>
-                  <input type="text" id="connName">
+                  <div class="lbl"><span data-i18n="conn.name"></span></div>
+                  <sp-textfield id="connName"></sp-textfield>
                 </div>
                 <div class="field">
                   <div class="lbl"><span>BASE URL</span></div>
-                  <input type="text" id="connUrl">
+                  <sp-textfield id="connUrl"></sp-textfield>
                 </div>
                 <div class="field">
-                  <div class="lbl"><span id="connKeyLabel">API KEY</span><span id="btnConnClearKey" class="link" data-i18n="conn.clearKey">Remove key</span></div>
-                  <input type="password" id="connKey" placeholder="Paste your API key here" data-i18n-placeholder="conn.keyPh">
+                  <div class="lbl"><span id="connKeyLabel">API KEY</span><span id="btnConnClearKey" class="link"
+                      data-i18n="conn.clearKey"></span></div>
+                  <input type="text" id="connKey" data-i18n-placeholder="conn.keyPh">
                   <div id="connKeyNote" class="issue"></div>
                 </div>
                 <div class="field">
-                  <div class="lbl"><span data-i18n="conn.modelName">Model name (type it if not in the list)</span></div>
-                  <input type="text" id="connModel">
+                  <div class="lbl"><span data-i18n="conn.modelName"></span></div>
+                  <sp-textfield id="connModel"></sp-textfield>
                 </div>
                 <div class="field row">
-                  <div style="flex: 1;">
+                  <div class="col">
                     <div class="lbl"><span>MAX TOKENS</span></div>
                     <input type="number" id="connMaxTokens" min="100" max="64000" step="100">
                   </div>
-                  <div style="flex: 1;">
+                  <div class="col">
                     <div class="lbl"><span>TEMP</span></div>
                     <input type="number" id="connTemp" min="0" max="2" step="0.1">
                   </div>
                 </div>
                 <div class="field row">
-                  <div style="flex: 2;">
+                  <div class="col w2">
                     <div class="lbl"><span>THINKING / REASONING</span></div>
-                    <select id="connThink">
-                      <option value="auto" data-i18n="think.auto">Model default</option>
-                      <option value="off" data-i18n="think.off">Off</option>
-                      <option value="low" data-i18n="think.low">Low</option>
-                      <option value="medium" data-i18n="think.medium">Medium</option>
-                      <option value="high" data-i18n="think.high">High</option>
-                    </select>
+                    <sp-dropdown id="connThink">
+                      <sp-menu slot="options">
+                        <sp-menu-item value="auto" data-i18n="think.auto"></sp-menu-item>
+                        <sp-menu-item value="off" data-i18n="think.off"></sp-menu-item>
+                        <sp-menu-item value="low" data-i18n="think.low"></sp-menu-item>
+                        <sp-menu-item value="medium" data-i18n="think.medium"></sp-menu-item>
+                        <sp-menu-item value="high" data-i18n="think.high"></sp-menu-item>
+                      </sp-menu>
+                    </sp-dropdown>
                   </div>
-                  <div style="flex: 1;" id="connThinkBudgetBox">
+                  <div class="col" id="connThinkBudgetBox">
                     <div class="lbl"><span>BUDGET</span></div>
                     <input type="number" id="connThinkBudget" min="0" max="64000" step="500">
                   </div>
                 </div>
-                <div id="connThinkNote" class="issue" style="margin: -4px 0 12px 0;"></div>
+                <div id="connThinkNote" class="issue flush"></div>
                 <div class="field row">
-                  <div style="flex: 1;">
-                    <div class="lbl"><span data-i18n="conn.timeout">TIMEOUT (sec)</span></div>
+                  <div class="col sm">
+                    <div class="lbl"><span data-i18n="conn.timeout"></span></div>
                     <input type="number" id="connTimeout" min="10" max="900" step="10">
                   </div>
-                  <div style="flex: 1;">
+                  <div class="col sm">
                     <div class="lbl"><span>RETRY</span></div>
                     <input type="number" id="connRetries" min="0" max="5" step="1">
                   </div>
-                  <div style="flex: 1;">
-                    <div class="lbl"><span data-i18n="conn.parallel">PARALLEL</span></div>
+                  <div class="col sm">
+                    <div class="lbl"><span data-i18n="conn.parallel"></span></div>
                     <input type="number" id="connParallel" min="1" max="8" step="1">
                   </div>
                 </div>
                 <div class="field">
-                  <div class="lbl"><span data-i18n="conn.chunk">CHUNK (characters per request)</span></div>
+                  <div class="lbl"><span data-i18n="conn.chunk"></span></div>
                   <input type="number" id="connChunk" min="300" max="12000" step="100">
                 </div>
                 <label class="chk" id="connLmNativeRow" style="display: none;">
-                  <input type="checkbox" id="connLmNative">
-                  <span data-i18n="conn.lmNative">Use LM Studio's /api/v0 endpoint to see real tok/s and TTFT</span>
+                  <sp-checkbox type="checkbox" id="connLmNative"></sp-checkbox>
+                  <span data-i18n="conn.lmNative"></span>
                 </label>
                 <div id="connCloudRow" style="display: none;">
                   <label class="chk">
-                    <input type="checkbox" id="connCloudAck">
-                    <span data-i18n="conn.cloudAck">I understand that document text will be sent from this computer to this provider</span>
+                    <sp-checkbox type="checkbox" id="connCloudAck"></sp-checkbox>
+                    <span data-i18n="conn.cloudAck"></span>
                   </label>
                 </div>
                 <div class="btn-line">
-                  <button id="btnConnSave" data-i18n="btn.save">Save</button>
-                  <button id="btnConnTest" data-i18n="conn.test">Test connection</button>
-                  <button id="btnSelfTest" data-i18n="conn.selfTest">Test model</button>
+                  <sp-button variant="cta" id="btnConnSave" data-i18n="btn.save"></sp-button>
                 </div>
-
-                <div id="connResult"></div>
               </div>
             </div>
           </div>
 
           <div class="acc" id="accPrompt" data-open="0">
-            <div class="acc-head"><span data-i18n="sec.prompt">AI instruction (System Instruction)</span><span class="acc-ind">+</span></div>
+            <div class="acc-head"><span data-i18n="sec.prompt"></span><span class="acc-ind">+</span></div>
             <div class="acc-body">
               <div class="field">
-                <div class="lbl"><span>PRESET</span><span id="btnResetPrompt" class="link" data-i18n="pre.reset">Restore default</span></div>
-                <select id="presetSelect"></select>
-                <div class="preset-row">
-                  <input type="text" id="presetName" placeholder="New preset name..." data-i18n-placeholder="pre.namePh">
-                  <button id="btnSavePreset" data-i18n="btn.save">Save</button>
-                  <button id="btnDeletePreset" data-i18n="btn.delete">Delete</button>
+                <div class="lbl"><span>PRESET</span><span id="btnResetPrompt" class="link" data-i18n="pre.reset"></span>
                 </div>
+                <sp-dropdown id="presetSelect"><sp-menu slot="options"></sp-menu></sp-dropdown>
+              </div>
+              <div class="field" id="presetNameBox" style="display: none;">
+                <div class="lbl"><span>ADD NEW PRESET NAME</span></div>
+                <sp-textfield id="presetName" data-i18n-placeholder="pre.namePh"></sp-textfield>
               </div>
               <div class="field">
                 <div class="lbl"><span>SYSTEM INSTRUCTION</span></div>
-                <textarea id="systemPrompt"></textarea>
+                <sp-textarea id="systemPrompt" disabled></sp-textarea>
+              </div>
+              <div class="btn-line flush" id="presetViewBtns">
+                <sp-button variant="primary" id="btnAddPreset" data-i18n="btn.add"></sp-button>
+                <sp-button variant="secondary" id="btnEditPreset" data-i18n="btn.edit"></sp-button>
+                <sp-button variant="warning" id="btnDeletePreset" data-i18n="btn.delete"></sp-button>
+              </div>
+              <div class="btn-line flush" id="presetEditBtns" style="display: none;">
+                <sp-button variant="save" size="s" id="btnSavePreset" data-i18n="btn.save"></sp-button>
+                <sp-button variant="secondary" size="s" id="btnCancelPreset" data-i18n="btn.cancel"></sp-button>
               </div>
             </div>
           </div>
@@ -917,35 +312,41 @@
     </div>
 
     <div class="acc" id="accRules" data-open="1">
-      <div class="acc-head"><span data-i18n="sec.rules">Check rules</span><span class="acc-ind">−</span></div>
+      <div class="acc-head"><span data-i18n="sec.rules"></span><span class="acc-ind">−</span></div>
       <div class="acc-body">
         <label class="chk">
-          <input type="checkbox" id="chkRules" checked>
-          <span data-i18n="rules.auto">Automatic rules (stacked vowels, odd characters, duplicates)</span>
+          <sp-checkbox type="checkbox" id="chkSpelling" checked></sp-checkbox>
+          <span data-i18n="rules.spelling"></span>
         </label>
         <label class="chk">
-          <input type="checkbox" id="chkSpacing" checked>
-          <span data-i18n="rules.spacing">Check spacing around mai yamok (ๆ) and double spaces</span>
+          <sp-checkbox type="checkbox" id="chkRules" checked></sp-checkbox>
+          <span data-i18n="rules.auto"></span>
+        </label>
+        <label class="chk">
+          <sp-checkbox type="checkbox" id="chkSpacing"></sp-checkbox>
+          <span data-i18n="rules.spacing"></span>
         </label>
       </div>
-    </div>
+    </div>  
 
     <div class="acc" id="accScope" data-open="1">
-      <div class="acc-head"><span data-i18n="sec.scope">Check scope</span><span class="acc-ind">−</span></div>
+      <div class="acc-head"><span data-i18n="sec.scope"></span><span class="acc-ind">−</span></div>
       <div class="acc-body">
         <div class="field">
-          <select id="scopeSelect">
-            <option value="selection" selected data-i18n="scope.sel">Selection (frame / text / table)</option>
-            <option value="page" data-i18n="scope.page">Current page</option>
-            <option value="document" data-i18n="scope.doc">Entire document</option>
-          </select>
+          <sp-dropdown id="scopeSelect">
+            <sp-menu slot="options">
+              <sp-menu-item value="selection" selected data-i18n="scope.sel"></sp-menu-item>
+              <sp-menu-item value="page" data-i18n="scope.page"></sp-menu-item>
+              <sp-menu-item value="document" data-i18n="scope.doc"></sp-menu-item>
+            </sp-menu>
+          </sp-dropdown>
         </div>
       </div>
     </div>
 
     <div id="actionBtnWrap">
-      <sp-button id="btnCheck" variant="cta" data-i18n="btn.check">Check</sp-button>
-      <sp-button id="btnCancel" variant="secondary" style="display: none;" data-i18n="btn.stop">Stop</sp-button>
+      <sp-button id="btnCheck" variant="cta" data-i18n="btn.check"></sp-button>
+      <sp-button id="btnCancel" variant="warning" style="display: none;" data-i18n="btn.stop"></sp-button>
     </div>
 
     <div id="progressWrap" style="display: none;">
@@ -955,30 +356,28 @@
       <div id="progressText"></div>
     </div>
 
-    <div id="status">Status: ready</div>
-    <div id="disclaimerBox" class="disclaimer-box" style="display: none;" data-i18n="run.disclaimer">
-      ⚠️ ผลการตรวจอาจไม่ถูกต้องทั้งหมด โปรดตรวจสอบความถูกต้องอีกครั้งเสมอ
-    </div>
+    <div id="status"></div>
+    <div id="disclaimerBox" class="disclaimer-box" style="display: none;" data-i18n="run.disclaimer"></div>
     <div id="statsLine"></div>
     <div id="resultList"></div>
 
     <div class="acc" id="accLog" data-open="0">
-      <div class="acc-head"><span data-i18n="sec.log">Activity log (tokens / speed)</span><span class="acc-ind">+</span>
-      </div>
+      <div class="acc-head"><span data-i18n="sec.log"></span><span class="acc-ind">+</span></div>
       <div class="acc-body">
-        <textarea id="logBox" readonly></textarea>
-        <div class="btn-line"><button id="btnClearLog" data-i18n="log.clear">Clear log</button></div>
+        <sp-textarea id="logBox" readonly></sp-textarea>
+        <div class="btn-line"><sp-button variant="primary" id="btnClearLog" data-i18n="log.clear"></sp-button></div>
       </div>
     </div>
 
     <div class="footer">
-      <span id="btnResetAll" class="link" data-i18n="foot.reset">Clear all results</span>
-      <span id="btnClearIgnore" class="link">Clear ignored words (0)</span>
+      <span id="btnResetAll" class="link" data-i18n="foot.reset"></span>
+      <span id="btnClearIgnore" class="link"></span>
     </div>
 
   </div>
 
   <script src="i18n.js"></script>
+  <script src="dropdown.js"></script>
   <script src="words_th.js"></script>
   <script src="words_en.js"></script>
   <script src="providers.js"></script>

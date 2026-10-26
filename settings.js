@@ -65,11 +65,11 @@ function syncEngineModeUI() {
 }
 
 function loadEngineModePref() {
-  const savedMode = lsGet(K_ENGINE_MODE, "pythainlp");
-  if (savedMode === "ai" && $("modeAI")) {
-    $("modeAI").checked = true;
-  } else if ($("modePyThaiNLP")) {
+  const savedMode = lsGet(K_ENGINE_MODE, "ai");
+  if (savedMode === "pythainlp" && $("modePyThaiNLP")) {
     $("modePyThaiNLP").checked = true;
+  } else if ($("modeAI")) {
+    $("modeAI").checked = true;
   }
   syncEngineModeUI();
 }
@@ -152,9 +152,7 @@ function refreshHeader() {
 function renderProfileSelect() {
   const sel = $("profileSelect");
   if (!sel) return;
-  sel.innerHTML = "";
-  ProfileStore.list.forEach((p) => { const o = el("option", "", p.name); o.value = p.id; sel.appendChild(o); });
-  sel.value = ProfileStore.active;
+  ddFill(sel, ProfileStore.list.map((p) => ({ value: p.id, label: p.name })), ProfileStore.active);
 }
 
 function updateModelInfo() {
@@ -178,37 +176,41 @@ async function refreshModels() {
   const p = activeProfile();
   const sel = $("modelSelect");
   if (!sel) return;
-  const add = (v, t) => { const o = el("option", "", t); o.value = v; sel.appendChild(o); };
-  sel.innerHTML = "";
+  let opts = [];
+  const add = (v, t) => opts.push({ value: v, label: t });
+  const flush = (v) => { ddFill(sel, opts, v); opts = []; };
   if (presetOf(p).needsKey && !keyCache[p.id]) {
     add(p.model || "", p.model ? p.model + " " + tr("list.custom") : tr("list.needKey"));
+    flush();
     setHealth("", tr("health.noKey"));
     modelMeta = {};
     updateModelInfo();
     return;
   }
   add("", tr("list.loading"));
+  flush();
   try {
     const r = await providerListModels(p);
     modelMeta = r.meta || {};
-    sel.innerHTML = "";
     if (!r.ids.length) {
       add(p.model || "", p.model ? p.model + " " + tr("list.custom") : tr("list.none"));
+      flush();
     } else {
       if (!p.model || r.ids.indexOf(p.model) < 0) add("", tr("list.pick"));
       r.ids.forEach((id) => add(id, id));
       if (p.model && r.ids.indexOf(p.model) < 0) add(p.model, p.model + " " + tr("list.custom"));
-      if (p.model) sel.value = p.model;
-      else if (!presetOf(p).cloud) { sel.value = r.ids[0]; p.model = r.ids[0]; saveProfiles(); if ($("connModel")) $("connModel").value = p.model; }
+      let pick;
+      if (p.model) pick = p.model;
+      else if (!presetOf(p).cloud) { pick = r.ids[0]; p.model = r.ids[0]; saveProfiles(); if ($("connModel")) $("connModel").value = p.model; }
+      flush(pick);
     }
     setHealth("ok", tr("health.ok", { ms: r.ms, n: r.ids.length }));
     updateModelInfo();
   } catch (e) {
     modelMeta = {};
     updateModelInfo();
-    sel.innerHTML = "";
     add(p.model || "", p.model ? p.model + " " + tr("list.custom") : tr("list.fail"));
-    if (p.model) sel.value = p.model;
+    flush(p.model || undefined);
     setHealth("bad", friendlyError(e, p));
   }
 }
@@ -398,13 +400,7 @@ function refreshLangUI() {
   const ps = $("connPreset");
   if (ps) {
     const cur = ps.value;
-    ps.innerHTML = "";
-    Object.keys(PROVIDER_PRESETS).forEach((k) => {
-      const o = el("option", "", PROVIDER_PRESETS[k].label);
-      o.value = k;
-      ps.appendChild(o);
-    });
-    ps.value = cur;
+    ddFill(ps, Object.keys(PROVIDER_PRESETS).map((k) => ({ value: k, label: PROVIDER_PRESETS[k].label })), cur);
     updateConnHints(cur);
   }
   syncEngineModeUI();
@@ -436,7 +432,7 @@ async function initSettings() {
 
   const presetSel = $("connPreset");
   if (presetSel) {
-    Object.keys(PROVIDER_PRESETS).forEach((k) => { const o = el("option", "", PROVIDER_PRESETS[k].label); o.value = k; presetSel.appendChild(o); });
+    ddFill(presetSel, Object.keys(PROVIDER_PRESETS).map((k) => ({ value: k, label: PROVIDER_PRESETS[k].label })));
   }
 
   const p = activeProfile();

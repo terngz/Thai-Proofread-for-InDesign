@@ -3,27 +3,22 @@
 เวอร์ชันล่าสุดอยู่บนสุด · Newest version first.
 ปุ่ม "What's new" ในหน้า About เปิดไฟล์นี้บน GitHub · The "What's new" link in the About panel opens this file on GitHub.
 
-## v1.2.5 — 2026-10-22
+## v1.3.0 — 2026-10-23
 
 ### ไทย
 
-**ใหม่**
-- เพิ่มป้ายเตือนความถูกต้อง (Disclaimer Banner) ใต้สถานะการตรวจ เพื่อเตือนให้ผู้ใช้ตรวจสอบข้อความอีกครั้งเสมอ
-
-**ปรับปรุง**
-- ปรับปรุง System Instruction (Prompt) มาตรฐานให้มีความชัดเจนยิ่งขึ้น และเน้นย้ำการตรวจจับคำสะกดผิดทั้งไทยและอังกฤษอย่างเท่าเทียม
-- ปรับ UI แสดงขอบเขตภาษาแบบ Dynamic (`[TH]` / `[TH/EN]`) ใต้ปุ่มสลับเครื่องมือ เพื่อลดความสับสนเรื่องภาษาที่รองรับ
-- ตัดตัวเลือก "ภาษาที่ตรวจ" และ "ดักจับคำน่าสงสัย" ออกจาก UI เพื่อลดความซับซ้อนในการตั้งค่า
+- เพิ่มป้ายเตือนการตรวจสอบข้อมูล: เพิ่มข้อความเตือนให้ผู้ใช้ตรวจสอบความถูกต้องของข้อความก่อนนำไปใช้งานจริงเสมอ
+- ปรับปรุง Prompt ตรวจสอบสองภาษา: ปรับปรุง System Instruction (Prompt) มาตรฐานให้ชัดเจนยิ่งขึ้นและเน้นย้ำการตรวจจับคำสะกดผิดทั้งภาษาไทยและภาษาอังกฤษเสมอ
+- ปรับปรุง UI ให้สวยงามและสอดคล้องกับตัวโปรแกรมหลักมากขึ้น และ ตัดส่วนที่ไม่จำเป็นลดความสับสน เช่น ตัวเลือกภาษาที่ตรวจ และ การดักจับคำน่าสงสัย ออกเพื่อลดความซับซ้อนในการตั้งค่า
+- อัปเดตคู่มือตั้งค่าเซิร์ฟเวอร์: ปรับปรุงขั้นตอนการตั้งค่าเซิร์ฟเวอร์ให้กระชับและเข้าใจง่ายยิ่งขึ้น
 
 ### English
 
 **New**
-- Added a disclaimer warning banner below the search status to remind users to always review generated results.
-
-**Improved**
-- Refined built-in System Instructions (Prompt) for better clarity, ensuring equal proofreading focus on both Thai and embedded English words.
-- Added dynamic language boundary indicators (`[TH]` / `[TH/EN]`) under the checker toggle to prevent language support confusion.
-- Simplified UI by removing "Languages to check" and "Flag suspicious words" options.
+- Safety Warning & Disclaimer: Added a prominent notice reminding users to review and verify all text before official use.
+- Improved Bilingual Prompting: Refined the default System Instruction for better clarity, ensuring balanced accuracy for both Thai and English proofreading.
+- Streamlined UI & Language Indicators: Added dynamic language scope indicators ([TH] / [TH/EN]) under the engine toggle, and removed redundant options ("Languages to check" and "Flag suspicious words") for a cleaner interface.
+- Updated Setup Guide: Improved step-by-step instructions in the server setup helper for a smoother onboarding experience.
 
 ## v1.2.0 — 2026-10-19
 
