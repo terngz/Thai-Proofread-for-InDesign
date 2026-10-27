@@ -1,8 +1,9 @@
 # Thai AI Proofreader
 
-[**TH**] ปลั๊กอินพิสูจน์อักษรภาษาไทยและอังกฤษสำหรับ **Adobe InDesign** ตรวจคำผิดในเอกสาร แล้วกดไปยังจุดที่ผิดหรือแก้ได้ทันทีจากแผงของปลั๊กอิน
+ปลั๊กอินพิสูจน์อักษรภาษาไทยและอังกฤษสำหรับ **Adobe InDesign** ตรวจคำผิดในเอกสาร แล้วกดไปยังจุดที่ผิดหรือแก้ได้ทันทีจากแผงของปลั๊กอิน
+A Thai and English proofreading plugin for **Adobe InDesign**. Detect errors in your document, navigate directly to problem spots, or apply instant fixes right from the panel.
 
-[**EN**] A Thai and English proofreading plugin for **Adobe InDesign**. Detect errors in your document, navigate directly to problem spots, or apply instant fixes right from the panel.
+[![Get it on Adobe Exchange](https://img.shields.io/badge/Adobe%20Exchange-Download%20Plugin-red?style=for-the-badge&logo=adobe)](https://adobe.com/go/cc_plugins_discover_plugin?pluginId=a0699c84&workflow=share)
 
 ---
 
@@ -51,10 +52,9 @@ Choose between two proofreading engines:
 
 ### Installation
 
-1. Install the **Thai AI Proofreader** extension via your preferred Adobe Extension installer.
+1. Get and install **Thai AI Proofreader** directly from the [Adobe Exchange Marketplace](https://adobe.com/go/cc_plugins_discover_plugin?pluginId=a0699c84&workflow=share).
 2. Launch (or restart) InDesign, then open **Thai AI Proofreader** from the InDesign Plugins menu.
 3. Select your primary proofreading engine and configure settings as detailed below.
-
 ---
 
 ### How to Use
@@ -165,7 +165,7 @@ LM Studio, Ollama (Local) · OpenAI (ChatGPT) · Anthropic (Claude) · Google Ge
 
 ### การติดตั้ง
 
-1. ติดตั้งส่วนขยาย **Thai AI Proofreader** ผ่าน Adobe Extension ตามช่องทางที่ได้รับ
+1. ดาวน์โหลดและติดตั้งส่วนขยาย **Thai AI Proofreader** ผ่านทาง [Adobe Exchange Marketplace](https://adobe.com/go/cc_plugins_discover_plugin?pluginId=a0699c84&workflow=share)
 2. เปิด (หรือรีสตาร์ท) InDesign แล้วเปิดแผง **Thai AI Proofreader** จากเมนูปลั๊กอินของ InDesign
 3. เลือกเครื่องมือตรวจหลักในแผง และตั้งค่าตามหัวข้อด้านล่าง
 
