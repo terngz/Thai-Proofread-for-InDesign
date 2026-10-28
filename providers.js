@@ -4,18 +4,33 @@ const K_PROFILES = "ai_proofread_profiles_v2";
 const K_KEY_PREFIX = "ai_proofread_key_";
 
 const PROVIDER_PRESETS = {
+  // Local Inference Frameworks
   lmstudio: { label: "LM Studio (Local)", type: "openai", baseUrl: "http://127.0.0.1:1234/v1", needsKey: false, cloud: false, tokenParam: "max_tokens", jsonMode: "structured", parallel: 1, chunkLimit: 800, timeoutSec: 180 },
   ollama: { label: "Ollama (Local)", type: "openai", baseUrl: "http://127.0.0.1:11434/v1", needsKey: false, cloud: false, tokenParam: "max_tokens", jsonMode: "structured", parallel: 1, chunkLimit: 800, timeoutSec: 180 },
+  llama: { label: "Llama.cpp (Local)", type: "openai", baseUrl: "http://127.0.0.1:9931", needsKey: false, cloud: false, tokenParam: "max_tokens", jsonMode: "structured", parallel: 1, chunkLimit: 800, timeoutSec: 180 },
+  jan: { label: "Jan.ai (Local)", type: "openai", baseUrl: "http://127.0.0.1:1337/v1", needsKey: false, cloud: false, tokenParam: "max_tokens", jsonMode: "structured", parallel: 1, chunkLimit: 800, timeoutSec: 180 },
+  vllm: { label: "vLLM (Local/Server)", type: "openai", baseUrl: "http://127.0.0.1:8000/v1", needsKey: false, cloud: false, tokenParam: "max_tokens", jsonMode: "structured", parallel: 2, chunkLimit: 1500, timeoutSec: 120 },
+
+  // Cloud Frontier Providers
   openai: { label: "OpenAI (ChatGPT)", type: "openai", baseUrl: "https://api.openai.com/v1", needsKey: true, cloud: true, tokenParam: "max_completion_tokens", jsonMode: "structured", parallel: 3, chunkLimit: 2500, timeoutSec: 90 },
-  anthropic: { label: "Anthropic (Claude)", type: "anthropic", baseUrl: "https://api.anthropic.com/v1", needsKey: true, cloud: true, jsonMode: "structured", parallel: 3, chunkLimit: 2500, timeoutSec: 90 },
+  anthropic: { label: "Anthropic (Claude)", type: "anthropic", baseUrl: "https://api.anthropic.com/v1", needsKey: true, cloud: true, tokenParam: "max_tokens", jsonMode: "structured", parallel: 3, chunkLimit: 2500, timeoutSec: 90 },
   gemini: { label: "Google Gemini", type: "openai", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", needsKey: true, cloud: true, tokenParam: "max_tokens", jsonMode: "structured", parallel: 3, chunkLimit: 2500, timeoutSec: 90 },
-  openrouter: { label: "OpenRouter", type: "openai", baseUrl: "https://openrouter.ai/api/v1", needsKey: true, cloud: true, tokenParam: "max_tokens", jsonMode: "object", parallel: 3, chunkLimit: 2000, timeoutSec: 90 },
-  groq: { label: "Groq", type: "openai", baseUrl: "https://api.groq.com/openai/v1", needsKey: true, cloud: true, tokenParam: "max_tokens", jsonMode: "object", parallel: 2, chunkLimit: 2000, timeoutSec: 60 },
-  mistral: { label: "Mistral", type: "openai", baseUrl: "https://api.mistral.ai/v1", needsKey: true, cloud: true, tokenParam: "max_tokens", jsonMode: "object", parallel: 3, chunkLimit: 2000, timeoutSec: 90 },
-  deepseek: { label: "DeepSeek", type: "openai", baseUrl: "https://api.deepseek.com/v1", needsKey: true, cloud: true, tokenParam: "max_tokens", jsonMode: "object", parallel: 2, chunkLimit: 2000, timeoutSec: 120 },
+  deepseek: { label: "DeepSeek", type: "openai", baseUrl: "https://api.deepseek.com", needsKey: true, cloud: true, tokenParam: "max_tokens", jsonMode: "structured", parallel: 2, chunkLimit: 2000, timeoutSec: 120 },
   xai: { label: "xAI (Grok)", type: "openai", baseUrl: "https://api.x.ai/v1", needsKey: true, cloud: true, tokenParam: "max_tokens", jsonMode: "object", parallel: 2, chunkLimit: 2000, timeoutSec: 90 },
+
+  // High-Speed & Inference Cloud Providers
+  groq: { label: "Groq", type: "openai", baseUrl: "https://api.groq.com/openai/v1", needsKey: true, cloud: true, tokenParam: "max_tokens", jsonMode: "object", parallel: 2, chunkLimit: 2000, timeoutSec: 60 },
+  cerebras: { label: "Cerebras AI", type: "openai", baseUrl: "https://api.cerebras.ai/v1", needsKey: true, cloud: true, tokenParam: "max_completion_tokens", jsonMode: "object", parallel: 3, chunkLimit: 2500, timeoutSec: 60 },
+  sambanova: { label: "SambaNova", type: "openai", baseUrl: "https://api.sambanova.ai/v1", needsKey: true, cloud: true, tokenParam: "max_tokens", jsonMode: "object", parallel: 2, chunkLimit: 2000, timeoutSec: 90 },
+  fireworks: { label: "Fireworks AI", type: "openai", baseUrl: "https://api.fireworks.ai/inference/v1", needsKey: true, cloud: true, tokenParam: "max_tokens", jsonMode: "object", parallel: 3, chunkLimit: 2000, timeoutSec: 90 },
+
+  // Aggregators & Other Models
+  openrouter: { label: "OpenRouter", type: "openai", baseUrl: "https://openrouter.ai/api/v1", needsKey: true, cloud: true, tokenParam: "max_tokens", jsonMode: "object", parallel: 3, chunkLimit: 2000, timeoutSec: 90 },
+  mistral: { label: "Mistral AI", type: "openai", baseUrl: "https://api.mistral.ai/v1", needsKey: true, cloud: true, tokenParam: "max_tokens", jsonMode: "object", parallel: 3, chunkLimit: 2000, timeoutSec: 90 },
   together: { label: "Together AI", type: "openai", baseUrl: "https://api.together.xyz/v1", needsKey: true, cloud: true, tokenParam: "max_tokens", jsonMode: "object", parallel: 3, chunkLimit: 2000, timeoutSec: 90 },
-  custom: { get label() { return tr("prov.custom"); }, type: "openai", baseUrl: "http://127.0.0.1:8000/v1", needsKey: false, cloud: true, tokenParam: "max_tokens", jsonMode: "object", parallel: 1, chunkLimit: 1200, timeoutSec: 120 }
+
+  // Custom Provider
+  custom: { get label() { return tr("prov.custom"); }, type: "openai", baseUrl: "http://127.0.0.1:8000/v1", needsKey: false, cloud: false, tokenParam: "max_tokens", jsonMode: "object", parallel: 1, chunkLimit: 1200, timeoutSec: 120 }
 };
 
 function pLsGet(key, fallback) {

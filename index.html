@@ -65,10 +65,6 @@
           <div class="help-item" data-i18n="help.s3a"></div>
         </div>
 
-        <div class="help-sec">
-          <div><b data-i18n="help.s4"></b></div>
-          <div class="help-item" data-i18n="help.s4a"></div>
-        </div>
       </div>
       <div class="help-foot">
         <span id="btnOpenGithub" class="link" data-i18n="help.gh"></span>
@@ -82,77 +78,86 @@
 
         <div class="seg-group">
           <label class="seg" id="boxPyThaiNLP">
-            <input type="radio" name="engineMode" id="modePyThaiNLP" value="pythainlp">
+            <input type="radio" name="engineMode" id="modePyThaiNLP" value="pythainlp" checked>
             <span>PyThaiNLP</span>
           </label>
           <label class="seg" id="boxAI">
-            <input type="radio" name="engineMode" id="modeAI" value="ai" checked>
+            <input type="radio" name="engineMode" id="modeAI" value="ai">
             <span>AI Engine</span>
           </label>
         </div>
         <div id="engineDesc" class="hint"></div>
 
+        <!-- ==================== PyThaiNLP Config Box ==================== -->
         <div id="pythainlpConfigBox" class="config-box">
-
-          <div class="hint"><span data-i18n="svc.url"></span></div>
-
-          <div class="inline-row">
-            <sp-textfield id="serviceUrl" value="http://127.0.0.1:8765"></sp-textfield>
-          </div>
-          <span class="code-row">
-            <sp-button variant="primary" id="btnServiceTest" data-i18n="btn.test"></sp-button>
-            <sp-button variant="primary" id="btnServiceHelp" data-i18n="btn.setupGuide"></sp-button>
-          </span>
-          <div id="serviceResult" style="margin: 8px;"></div>
-
-
-          <div class="field">
-            <div id="serviceHelp" class="subpanel" style="display: none;">
-
-              <div class="help-title svc-title">
-                <span data-i18n="svc.h.title"></span>
-                <span id="btnCloseServiceHelp" class="icon-btn sm" title="Close">✕</span>
-              </div>
-
-              <!-- ข้อ 1: ดาวน์โหลด Python -->
-              <div class="help-sec">
-                <span data-i18n="svc.h.1_prefix"></span>
-                <span id="linkPython" class="link">python.org ↗</span>
-                <span data-i18n="svc.h.1_suffix"></span>
-              </div>
-
-              <!-- ข้อ 2: pip install -->
-              <div data-i18n="svc.h.2"></div>
-              <div class="code-row" style="padding-left: 10px;">
-                <div class="code" id="pipInstallCode">pip install pythainlp pyspellchecker</div>
-                <sp-button variant="secondary" id="btnCopyPip">Copy</sp-button>
-              </div>
-
-              <!-- ข้อ 3: บันทึกสคริปต์หลัก และ Server Launcher -->
-              <div data-i18n="svc.h.3"></div>
-              <div class="code-row" style="padding-left: 10px;">
-                <sp-button variant="secondary" id="btnSaveServerScript" data-i18n="svc.h.saveScript"></sp-button>
-                <sp-button variant="secondary" id="btnSaveLauncher" data-i18n="svc.h.saveLauncher"></sp-button>
-              </div>
-              <div id="savedScriptPath" class="issue gap"></div>
-
-              <!-- ข้อ 4: เลือกรันผ่านคำสั่ง หรือ ดับเบิลคลิกไฟล์ Launcher -->
-              <div data-i18n="svc.h.4"></div>
-              <div class="code-row" style="padding-left: 10px;">
-                <div class="code" id="runCmdCode">python "spellcheck_server.py"</div>
-                <sp-button variant="secondary" id="btnCopyRun">Copy</sp-button>
-              </div>
-              <div class="issue gap" data-i18n="svc.h.4_or"></div>
-
-              <!-- ข้อ 5: เมื่อเซิร์ฟเวอร์รันเรียบร้อย -->
-              <div data-i18n="svc.h.5"></div>
-              <div class="issue" data-i18n="svc.h.note"></div>
-
+          <div class="acc" id="accPyThaiNLP" data-open="1">
+            <!-- ส่วนหัวข้อ Accordion -->
+            <div class="acc-head">
+              <span>
+                <span id="accPyThaiNLPTitle" data-i18n="engine.pythainlp"></span>
+                <span id="svcHealthDot" class="dot"></span>
+              </span>
+              <span class="acc-ind">−</span>
             </div>
 
-          </div>
-        </div>
+            <!-- ส่วนเนื้อหาข้างใน Accordion -->
+            <div class="acc-body">
+              <div class="hint">
+                <span data-i18n="svc.url"></span>
+              </div>
 
+              <div class="inline-row" style="margin-top: 8px;">
+                <sp-textfield id="serviceUrl" value="http://127.0.0.1:8765"></sp-textfield>
+              </div>
+              <span class="code-row">
+                <sp-button variant="primary" id="btnServiceTest" data-i18n="btn.test"></sp-button>
+                <sp-button variant="primary" id="btnServiceHelp" data-i18n="btn.setupGuide"></sp-button>
+              </span>
+              <div id="serviceResult" style="margin: 8px;"></div>
+
+              <div class="field">
+                <div id="serviceHelp" class="subpanel" style="display: none;">
+                  <div class="help-title svc-title">
+                    <span data-i18n="svc.h.title"></span>
+                    <span id="btnCloseServiceHelp" class="icon-btn sm" title="Close">✕</span>
+                  </div>
+                  <div data-i18n="svc.h.note"></div>
+                  <div style="height: 1px; background-color: rgba(112, 112, 112, 0.39); margin: 10px 0 14px 0;"></div>
+                  <div class="help-sec" style="margin-bottom: 6px;">
+                    <span data-i18n="svc.h.1"></span>
+                  </div>
+                  <div class="code-row" style="margin-bottom: 6px; padding-left: 0.75rem;">
+                    <sp-button variant="accent" id="btnOpenServerFolder" style="width: 100%;" data-i18n="svc.h.btnCopyPath">
+                      Copy Server Folder Path
+                    </sp-button>
+                  </div>
+                  <div class="help-sec" style="margin-bottom: 6px;">
+                    <span data-i18n="svc.h.2"></span>
+                  </div>
+                  <div class="help-sec" style="margin-bottom: 6px; padding-left: 0.75rem;">
+                    <span data-i18n="svc.h.2_1_win"></span>
+                  </div>
+                  <div class="help-sec" style="margin-bottom: 6px; padding-left: 0.75rem;">
+                    <span data-i18n="svc.h.2_2_mac"></span>
+                  </div>
+                  <div class="help-sec" style="margin-bottom: 6px; padding-left: 0.75rem;">
+                    <span data-i18n="svc.h.2_2_mac_cli"></span>
+                  </div>
+                  <div class="help-sec" style="margin-bottom: 6px;">
+                    <span data-i18n="svc.h.3"></span>
+                  </div>
+                  <div class="help-sec" style="margin-bottom: 6px;">
+                    <span data-i18n="svc.h.4"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div> 
+        
+        <!-- ปิด pythainlpConfigBox ตรงนี้ -->
+
+        <!-- ==================== AI Config Box ==================== -->
         <div id="aiConfigBox" class="config-box" style="display: none;">
 
           <div class="acc" id="accModel" data-open="1">
@@ -163,13 +168,11 @@
             <div class="acc-body">
               <div class="field row">
                 <div class="col">
-                  <div class="lbl"><span data-i18n="mdl.profile"></span><span id="btnConnSettings" class="link"
-                      data-i18n="mdl.settings"></span></div>
+                  <div class="lbl"><span data-i18n="mdl.profile"></span><span id="btnConnSettings" class="link" data-i18n="mdl.settings"></span></div>
                   <sp-dropdown id="profileSelect"><sp-menu slot="options"></sp-menu></sp-dropdown>
                 </div>
                 <div class="col">
-                  <div class="lbl"><span data-i18n="mdl.model"></span><span id="btnRefreshModels" class="link"
-                      data-i18n="mdl.refresh"></span></div>
+                  <div class="lbl"><span data-i18n="mdl.model"></span><span id="btnRefreshModels" class="link" data-i18n="mdl.refresh"></span></div>
                   <sp-dropdown id="modelSelect">
                     <sp-menu slot="options">
                       <sp-menu-item value="" data-i18n="mdl.connecting"></sp-menu-item>
@@ -178,21 +181,17 @@
                 </div>
               </div>
               <div class="code-row">
-                  <sp-button variant="primary" id="btnConnTest" data-i18n="conn.test"></sp-button>
-                  <sp-button variant="primary" id="btnSelfTest" data-i18n="conn.selfTest"></sp-button>
-                  <div id="modelInfo"></div>
-                  <div id="connResult"></div>
-                
+                <sp-button variant="primary" id="btnConnTest" data-i18n="conn.test"></sp-button>
+                <sp-button variant="primary" id="btnSelfTest" data-i18n="conn.selfTest"></sp-button>
+                <div id="modelInfo"></div>
+                <div id="connResult"></div>
               </div>
 
               <div id="connPanel" class="subpanel conn-panel" style="display: none;">
-
                 <div class="btn-line flush">
                   <sp-button variant="cta" id="btnConnNew" data-i18n="conn.new"></sp-button>
-                  <sp-button variant="warning" id="btnConnDelete" class="btn-danger"
-                    data-i18n="conn.delete"></sp-button>
+                  <sp-button variant="warning" id="btnConnDelete" class="btn-danger" data-i18n="conn.delete"></sp-button>
                 </div>
-
                 <div class="field">
                   <div class="lbl"><span data-i18n="conn.provider"></span></div>
                   <sp-dropdown id="connPreset"><sp-menu slot="options"></sp-menu></sp-dropdown>
@@ -206,8 +205,7 @@
                   <sp-textfield id="connUrl"></sp-textfield>
                 </div>
                 <div class="field">
-                  <div class="lbl"><span id="connKeyLabel">API KEY</span><span id="btnConnClearKey" class="link"
-                      data-i18n="conn.clearKey"></span></div>
+                  <div class="lbl"><span id="connKeyLabel">API KEY</span><span id="btnConnClearKey" class="link" data-i18n="conn.clearKey"></span></div>
                   <input type="text" id="connKey" data-i18n-placeholder="conn.keyPh">
                   <div id="connKeyNote" class="issue"></div>
                 </div>
@@ -283,8 +281,7 @@
             <div class="acc-head"><span data-i18n="sec.prompt"></span><span class="acc-ind">+</span></div>
             <div class="acc-body">
               <div class="field">
-                <div class="lbl"><span>PRESET</span><span id="btnResetPrompt" class="link" data-i18n="pre.reset"></span>
-                </div>
+                <div class="lbl"><span>PRESET</span><span id="btnResetPrompt" class="link" data-i18n="pre.reset"></span></div>
                 <sp-dropdown id="presetSelect"><sp-menu slot="options"></sp-menu></sp-dropdown>
               </div>
               <div class="field" id="presetNameBox" style="display: none;">
@@ -306,83 +303,82 @@
               </div>
             </div>
           </div>
+
+        </div>
+        
+
+        <div class="acc" id="accRules" data-open="1">
+          <div class="acc-head"><span data-i18n="sec.rules"></span><span class="acc-ind">−</span></div>
+          <div class="acc-body">
+            <label class="chk">
+              <sp-checkbox type="checkbox" id="chkSpelling" checked></sp-checkbox>
+              <span data-i18n="rules.spelling"></span>
+            </label>
+            <label class="chk">
+              <sp-checkbox type="checkbox" id="chkRules" checked></sp-checkbox>
+              <span data-i18n="rules.auto"></span>
+            </label>
+            <label class="chk">
+              <sp-checkbox type="checkbox" id="chkSpacing"></sp-checkbox>
+              <span data-i18n="rules.spacing"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="acc" id="accScope" data-open="1">
+          <div class="acc-head"><span data-i18n="sec.scope"></span><span class="acc-ind">−</span></div>
+          <div class="acc-body">
+            <div class="field">
+              <sp-dropdown id="scopeSelect">
+                <sp-menu slot="options">
+                  <sp-menu-item value="selection" selected data-i18n="scope.sel"></sp-menu-item>
+                  <sp-menu-item value="page" data-i18n="scope.page"></sp-menu-item>
+                  <sp-menu-item value="document" data-i18n="scope.doc"></sp-menu-item>
+                </sp-menu>
+              </sp-dropdown>
+            </div>
+          </div>
+        </div>
+
+        <div id="actionBtnWrap">
+          <sp-button id="btnCheck" variant="cta" data-i18n="btn.check"></sp-button>
+          <sp-button id="btnCancel" variant="warning" style="display: none;" data-i18n="btn.stop"></sp-button>
+        </div>
+
+        <div id="progressWrap" style="display: none;">
+          <div id="progressTrack">
+            <div id="progressFill"></div>
+          </div>
+          <div id="progressText"></div>
+        </div>
+
+        <div id="status"></div>
+        <div id="disclaimerBox" class="disclaimer-box" style="display: none;" data-i18n="run.disclaimer"></div>
+        <div id="statsLine"></div>
+        <div id="resultList"></div>
+
+        <div class="acc" id="accLog" data-open="0">
+          <div class="acc-head"><span data-i18n="sec.log"></span><span class="acc-ind">+</span></div>
+          <div class="acc-body">
+            <sp-textarea id="logBox" readonly></sp-textarea>
+            <div class="btn-line"><sp-button variant="primary" id="btnClearLog" data-i18n="log.clear"></sp-button></div>
+          </div>
+        </div>
+
+        <div class="footer">
+          <span id="btnResetAll" class="link" data-i18n="foot.reset"></span>
+          <span id="btnClearIgnore" class="link"></span>
         </div>
 
       </div>
-    </div>
 
-    <div class="acc" id="accRules" data-open="1">
-      <div class="acc-head"><span data-i18n="sec.rules"></span><span class="acc-ind">−</span></div>
-      <div class="acc-body">
-        <label class="chk">
-          <sp-checkbox type="checkbox" id="chkSpelling" checked></sp-checkbox>
-          <span data-i18n="rules.spelling"></span>
-        </label>
-        <label class="chk">
-          <sp-checkbox type="checkbox" id="chkRules" checked></sp-checkbox>
-          <span data-i18n="rules.auto"></span>
-        </label>
-        <label class="chk">
-          <sp-checkbox type="checkbox" id="chkSpacing"></sp-checkbox>
-          <span data-i18n="rules.spacing"></span>
-        </label>
-      </div>
-    </div>  
-
-    <div class="acc" id="accScope" data-open="1">
-      <div class="acc-head"><span data-i18n="sec.scope"></span><span class="acc-ind">−</span></div>
-      <div class="acc-body">
-        <div class="field">
-          <sp-dropdown id="scopeSelect">
-            <sp-menu slot="options">
-              <sp-menu-item value="selection" selected data-i18n="scope.sel"></sp-menu-item>
-              <sp-menu-item value="page" data-i18n="scope.page"></sp-menu-item>
-              <sp-menu-item value="document" data-i18n="scope.doc"></sp-menu-item>
-            </sp-menu>
-          </sp-dropdown>
-        </div>
-      </div>
-    </div>
-
-    <div id="actionBtnWrap">
-      <sp-button id="btnCheck" variant="cta" data-i18n="btn.check"></sp-button>
-      <sp-button id="btnCancel" variant="warning" style="display: none;" data-i18n="btn.stop"></sp-button>
-    </div>
-
-    <div id="progressWrap" style="display: none;">
-      <div id="progressTrack">
-        <div id="progressFill"></div>
-      </div>
-      <div id="progressText"></div>
-    </div>
-
-    <div id="status"></div>
-    <div id="disclaimerBox" class="disclaimer-box" style="display: none;" data-i18n="run.disclaimer"></div>
-    <div id="statsLine"></div>
-    <div id="resultList"></div>
-
-    <div class="acc" id="accLog" data-open="0">
-      <div class="acc-head"><span data-i18n="sec.log"></span><span class="acc-ind">+</span></div>
-      <div class="acc-body">
-        <sp-textarea id="logBox" readonly></sp-textarea>
-        <div class="btn-line"><sp-button variant="primary" id="btnClearLog" data-i18n="log.clear"></sp-button></div>
-      </div>
-    </div>
-
-    <div class="footer">
-      <span id="btnResetAll" class="link" data-i18n="foot.reset"></span>
-      <span id="btnClearIgnore" class="link"></span>
-    </div>
-
-  </div>
-
-  <script src="i18n.js"></script>
-  <script src="dropdown.js"></script>
-  <script src="words_th.js"></script>
-  <script src="words_en.js"></script>
-  <script src="providers.js"></script>
-  <script src="settings.js"></script>
-  <script src="index.js"></script>
+      <script src="i18n.js"></script>
+      <script src="dropdown.js"></script>
+      <script src="words_th.js"></script>
+      <script src="words_en.js"></script>
+      <script src="providers.js"></script>
+      <script src="settings.js"></script>
+      <script src="index.js"></script>
 </body>
 
 </html>

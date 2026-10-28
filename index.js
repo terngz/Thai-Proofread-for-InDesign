@@ -1,6 +1,6 @@
 "use strict";
 const { app, NothingEnum, ScriptLanguage, UndoModes } = require("indesign");
-const { shell } = require("uxp");
+const { shell, storage } = require("uxp");
 
 // =========================================================================
 // OPTIMIZED STATE MANAGEMENT (แยกข้อมูลตาม Document Tab + Auto Clean Memory)
@@ -83,7 +83,6 @@ const MAX_ORIGINAL_LEN = 30;
 const K_PRESETS = "ai_proofread_custom_presets";
 const K_IGNORE = "ai_proofread_ignore";
 const THAI = /[\u0E01-\u0E7F]/;
-/* const LATIN_WORD = /^[A-Za-z][A-Za-z'\u2019]*$/; */
 const MARK_L = "【";
 const MARK_R = "】";
 const RED = "err";
@@ -191,59 +190,45 @@ function runRules(text, opts) {
     add(idx - p.length, p + text.substr(idx, len), replacement == null ? "" : p + replacement, issue);
   };
 
-  // ==========================================
-  // 1. AUTOMATIC RULES (กฎภาษาไทย / โครงสร้างคำ)
-  // ==========================================
+  // 1. AUTOMATIC RULES
   if (opts && opts.rules) {
-    // ซ้ำสระ/อักขระ
     scan(/([\u0E30-\u0E3A\u0E40-\u0E4E])\1+/g, (m) => {
       if (m[1] === "\u0E40" && m[0].length === 2) return add(m.index, m[0], "\u0E41", { k: "r.doubleE" });
       if (/[\u0E40-\u0E45]/.test(m[1])) return add(m.index, m[0], m[1], { k: "r.dupChar" });
       ctx(m.index, m[0].length, m[1], { k: "r.dupVowel" });
     });
 
-    // สระ/วรรณยุกต์ซ้อนผิดตำแหน่ง
     scan(/[\u0E31\u0E34-\u0E37\u0E47]{2}|[\u0E48-\u0E4B]{2}|[\u0E48-\u0E4B][\u0E31\u0E34-\u0E37]/g, (m) => {
       if (m[0][0] === m[0][1]) return;
       ctx(m.index, m[0].length, null, { k: "r.stacked" });
     });
 
-    // นฤคหิต
     scan(/\u0E4D\u0E32/g, (m) => ctx(m.index, 2, "\u0E33", { k: "r.nikhahit" }));
 
-    // วรรณยุกต์ลอย
     scan(/(?:^|[^\u0E01-\u0E4E])[\u0E31\u0E34-\u0E3A\u0E47-\u0E4E]/g,
       (m) => add(m.index, m[0], "", { k: "r.floating" }));
 
-    // อักษรภาษาอังกฤษโผล่กลางคำไทย
     scan(/[\u0E01-\u0E7F][A-Za-z][\u0E01-\u0E7F]/g,
       (m) => add(m.index, m[0], "", { k: "r.latinInThai" }));
 
-    // อักขระแปลกปลอม/ซ่อน
     scan(/[\uFFFD\uE000-\uF8FF\uFEFF\u200B-\u200D\u2060]/g, (m) => {
       const hex = "U+" + m[0].charCodeAt(0).toString(16).toUpperCase().padStart(4, "0");
       const hidden = /[\uFEFF\u200B-\u200D\u2060]/.test(m[0]);
       add(m.index, m[0], "", { k: hidden ? "r.hidden" : "r.strange", p: { hex } });
     });
 
-    // พยัญชนะซ้ำเกินปกติ
     scan(/([\u0E01-\u0E2E])\1{2,}/g, (m) => add(m.index, m[0], m[1], { k: "r.consRepeat" }));
 
-    // คำอังกฤษซ้ำ
     scan(/\b([A-Za-z]{2,})[ \t]+\1\b/gi, (m) => add(m.index, m[0], m[1], { k: "r.enDup" }));
 
-    // [ย้ายมาไว้ที่นี่] กฎการเว้นวรรคไม้ยมก (ตามหลักภาษาไทย)
     scan(/([\u0E01-\u0E45\u0E47-\u0E7F]{1,4})\u0E46/g,
       (m) => add(m.index, m[0], m[1] + " \u0E46", { k: "r.yamokBefore" }));
     scan(/\u0E46[\u0E01-\u0E45\u0E47-\u0E7F]/g,
       (m) => add(m.index, m[0], "\u0E46 " + m[0][1], { k: "r.yamokAfter" }));
   }
 
-  // ==========================================
-  // 2. CHECK SPACING (ตรวจเฉพาะระยะการเคาะ Spacebar)
-  // ==========================================
+  // 2. CHECK SPACING
   if (opts && opts.spacing) {
-    // เคาะ Spacebar ซ้ำเกิน 1 ครั้ง (Double Space)
     scan(/ {2,}/g, (m) => add(m.index, m[0], " ", { k: "r.dblSpace" }));
   }
 
@@ -763,7 +748,6 @@ async function runCheck() {
   const useSpelling = $("chkSpelling") ? $("chkSpelling").checked : true;
   const useRules = $("chkRules") ? $("chkRules").checked : true;
   const useSpacing = $("chkSpacing") ? $("chkSpacing").checked : true;
-  /* const spacing = $("chkSpacing") ? $("chkSpacing").checked : false; */
   const useService = engineMode === "pythainlp";
   const useAI = engineMode === "ai";
 
@@ -816,7 +800,7 @@ async function runCheck() {
     const ctx = { taken: new Set(), merged: new Map(), stat: { rule: findings.length, ai: 0, svc: 0, dropped: 0 } };
     findings.forEach((f) => f.positions.forEach((p) => ctx.taken.add(p.unit.idx + ":" + p.start)));
 
-    // 2. ตรวจสอบ Spelling (ถ้าติ๊กเลือกไว้)
+    // 2. ตรวจสอบ Spelling
     if (useSpelling) {
       if (useService && !cancelled) {
         chunkLimit = 4000;
@@ -905,7 +889,6 @@ async function runCheck() {
     if ($("disclaimerBox")) $("disclaimerBox").style.display = "block";
   }
 
-  // อัปเดต Map ประจำ Document ID ล่าสุด
   if (currentDocId) {
     docFindingsMap.set(currentDocId, findings);
   }
@@ -1140,46 +1123,6 @@ function onUiLangChange(lang) {
   refreshLangUI();
 }
 
-function bindAutoSelect(elementId) {
-  const el = $(elementId);
-  if (!el) return;
-  el.addEventListener("click", () => {
-    try {
-      const range = document.createRange();
-      range.selectNodeContents(el);
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(range);
-    } catch (e) {
-      console.warn("Select text failed:", e);
-    }
-  });
-}
-
-async function copyToClipboard(text) {
-  if (!text) return;
-  try {
-    const { clipboard } = require("uxp");
-    if (clipboard) {
-      await clipboard.setContent({ "text/plain": text });
-      setStatus(uiLang === "th" ? "คัดลอกคำสั่งเรียบร้อยแล้ว!" : "Command copied to clipboard!", GREEN);
-    } else {
-      throw new Error("UXP Clipboard API not available");
-    }
-  } catch (err) {
-    console.warn("Clipboard write failed:", err);
-    setStatus(uiLang === "th" ? "คัดลอกไม่สำเร็จ" : "Failed to copy text.", RED);
-
-    try {
-      await navigator.clipboard.writeText(text);
-      setStatus(uiLang === "th" ? "คัดลอกคำสั่งเรียบร้อยแล้ว!" : "Command copied to clipboard!", GREEN);
-    } catch (fallbackErr) {
-      console.error("Fallback copy failed:", fallbackErr);
-      setStatus(uiLang === "th" ? "คัดลอกไม่สำเร็จ" : "Failed to copy text.", RED);
-    }
-  }
-}
-
 function lockWheelOnFields() {
   const block = (e) => {
     e.preventDefault();
@@ -1215,98 +1158,118 @@ function init() {
   initPresets();
   initSettings();
 
-  if ($("btnSaveServerScript")) {
-    $("btnSaveServerScript").addEventListener("click", async () => {
-      try {
-        const { storage } = require("uxp");
-        const pluginFolder = await storage.localFileSystem.getPluginFolder();
-        const scriptEntry = await pluginFolder.getEntry("spellcheck_server.py");
-        const scriptContent = await scriptEntry.read();
-
-        const targetFile = await storage.localFileSystem.getFileForSaving("spellcheck_server.py", {
-          types: ["py"]
-        });
-
-        if (targetFile) {
-          await targetFile.write(scriptContent);
-          const savedScriptFullPath = targetFile.nativePath;
-
-          lsSet("ai_proofread_saved_script_path", savedScriptFullPath);
-
-          const runCommand = `python "${savedScriptFullPath}"`;
-          if ($("runCmdCode")) $("runCmdCode").textContent = runCommand;
-          if ($("savedScriptPath")) $("savedScriptPath").textContent = `Saved: ${savedScriptFullPath}`;
-
-          setStatus(uiLang === "th" ? "บันทึกไฟล์ spellcheck_server.py เรียบร้อยแล้ว!" : "Script saved successfully!", GREEN);
-        }
-      } catch (e) {
-        console.warn("Failed to save script:", e);
-        setStatus(uiLang === "th" ? "ไม่สามารถบันทึกไฟล์ได้" : "Failed to save script file.", RED);
+  // สลับการเปิด/ปิดคำแนะนำ Setup Guide
+  if ($("btnSetupGuide")) {
+    $("btnSetupGuide").addEventListener("click", () => {
+      const guideEl = $("setupGuideContent");
+      if (guideEl) {
+        const isHidden = guideEl.style.display === "none";
+        guideEl.style.display = isHidden ? "block" : "none";
       }
     });
   }
-
-  if ($("btnSaveLauncher")) {
-    $("btnSaveLauncher").addEventListener("click", async () => {
+  
+  // ปุ่มคัดลอก Path โฟลเดอร์เซิร์ฟเวอร์ (แจ้งเตือน แล้วซ่อนอัตโนมัติภายใน 4 วินาที)
+  if ($("btnOpenServerFolder")) {
+    $("btnOpenServerFolder").addEventListener("click", async () => {
       try {
-        const { storage } = require("uxp");
-
+        const pluginFolder = await storage.localFileSystem.getPluginFolder();
         const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
-        const sourceFileName = isMac ? "spellcheck_launcher.command" : "spellcheck_launcher.bat";
-        const fileExt = isMac ? "command" : "bat";
+        const osFolder = isMac ? "mac" : "win";
 
-        const pluginFolder = await storage.localFileSystem.getPluginFolder();
-        const launcherEntry = await pluginFolder.getEntry(sourceFileName);
-        const launcherContent = await launcherEntry.read();
+        // 1. ดึงเอนทรีโฟลเดอร์เซิร์ฟเวอร์
+        const distFolder = await pluginFolder.getEntry("dist");
+        const osTargetFolder = await distFolder.getEntry(osFolder);
+        const serverFolder = await osTargetFolder.getEntry("spellcheck_server");
 
-        const targetFile = await storage.localFileSystem.getFileForSaving(sourceFileName, {
-          types: [fileExt]
-        });
+        if (serverFolder && serverFolder.nativePath) {
+          const pathText = serverFolder.nativePath;
+          let copied = false;
 
-        if (targetFile) {
-          await targetFile.write(launcherContent);
-          setStatus(
-            uiLang === "th"
-              ? `บันทึกไฟล์ ${sourceFileName} เรียบร้อยแล้ว!`
-              : `Saved ${sourceFileName} successfully!`,
-            GREEN
-          );
+          // 2. คัดลอก Path ลง Clipboard
+          try {
+            await navigator.clipboard.writeText(pathText);
+            copied = true;
+          } catch (err) {
+            const uxp = require("uxp");
+            if (uxp && uxp.clipboard && typeof uxp.clipboard.setContent === "function") {
+              await uxp.clipboard.setContent({ "text/plain": pathText });
+              copied = true;
+            }
+          }
+
+          // 3. แสดงผลแจ้งเตือนใน #serviceResult
+          const serviceResultEl = $("serviceResult");
+          if (serviceResultEl) {
+            if (copied) {
+              const targetApp = isMac ? "Finder" : "File Explorer";
+              const msg = tr("svc.copy_success", { app: targetApp });
+
+              serviceResultEl.innerHTML = `<span style="color: #4caf50; font-size: 11px;">${msg}</span>`;
+
+              // 4. ตั้งเวลา 4 วินาทีให้ข้อความคัดลอกหายไป
+              setTimeout(() => {
+                if (serviceResultEl.innerHTML.includes(msg) || serviceResultEl.innerHTML.includes("Path")) {
+                  serviceResultEl.innerHTML = "";
+                }
+              }, 4000);
+            } else {
+              throw new Error("Clipboard API unavailable");
+            }
+          }
+        } else {
+          throw new Error("Server folder entry not found");
         }
       } catch (e) {
-        console.warn("Failed to save launcher file:", e);
-        setStatus(
-          uiLang === "th" ? "ไม่สามารถบันทึกไฟล์ตัวรันได้" : "Failed to save launcher file.",
-          RED);
+        console.error("[Spellcheck] Copy path error:", e);
+        const serviceResultEl = $("serviceResult");
+        if (serviceResultEl) {
+          serviceResultEl.innerHTML = `<span style="color: #f44336; font-size: 11px;">Error: ${e.message || e}</span>`;
+        }
       }
     });
   }
 
-  function updateSavedPathUI(path) {
-    if (!path) return;
-    const runCommand = `python "${path}"`;
-    if ($("runCmdCode")) $("runCmdCode").textContent = runCommand;
-    if ($("savedScriptPath")) $("savedScriptPath").textContent = `Saved to: ${path}`;
+  // =========================================================
+  // ระบบ Auto-Check สถานะ PyThaiNLP Local Server
+  // =========================================================
+  let svcHealthTimer = null;
+
+  async function checkSvcHealth() {
+    const dot = $("svcHealthDot");
+    if (!dot) return;
+
+    const svcInput = $("serviceUrl");
+    const svcUrl = svcInput ? (svcInput.value || "").trim() : "";
+
+    if (!svcUrl) {
+      dot.className = "dot"; 
+      return;
+    }
+
+    try {
+      const res = await serviceHealth(svcUrl);
+      if (res && (res.ok || res.status === "ok" || res === true)) {
+        dot.className = "dot ok"; 
+      } else {
+        dot.className = "dot bad";  
+      }
+    } catch (e) {
+      dot.className = "dot bad"; 
+    }
   }
 
-  if ($("linkPython")) {
-    $("linkPython").addEventListener("click", () => {
-      openLink("[https://www.python.org/downloads/](https://www.python.org/downloads/)");
+  const svcInputEl = $("serviceUrl");
+  if (svcInputEl) {
+    ["input", "change", "spInput", "blur"].forEach((evtName) => {
+      svcInputEl.addEventListener(evtName, checkSvcHealth);
     });
   }
 
-  if ($("btnCopyPip")) {
-    $("btnCopyPip").addEventListener("click", async () => {
-      const text = $("pipInstallCode") ? $("pipInstallCode").textContent.trim() : "";
-      await copyToClipboard(text);
-    });
-  }
+  if (svcHealthTimer) clearInterval(svcHealthTimer);
+  svcHealthTimer = setInterval(checkSvcHealth, 4000);
 
-  if ($("btnCopyRun")) {
-    $("btnCopyRun").addEventListener("click", async () => {
-      const text = $("runCmdCode") ? $("runCmdCode").textContent.trim() : "";
-      await copyToClipboard(text);
-    });
-  }
+  checkSvcHealth();
 
   if ($("btnClearIgnore")) {
     $("btnClearIgnore").addEventListener("click", () => {
@@ -1321,7 +1284,6 @@ function init() {
   if ($("btnResetAll")) $("btnResetAll").addEventListener("click", resetCheck);
   if ($("btnCancel")) $("btnCancel").addEventListener("click", () => { cancelled = true; setStatus(tr("run.stopping")); });
 
-  // เช็ก Document ปัจจุบันทันทีที่เปิด Plugin
   syncStateWithActiveDocument();
 }
 

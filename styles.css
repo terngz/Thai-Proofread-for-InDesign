@@ -218,6 +218,10 @@ h3 {
     text-align: right;
 }
 
+.text-highlight {
+    color: #afe6ff; /* หรือ #38bdf8 / #2563eb */
+}
+
 .about-foot {
     margin-top: var(--s3) !important;
 }
