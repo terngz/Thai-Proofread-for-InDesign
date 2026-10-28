@@ -69,27 +69,44 @@ Choose between two proofreading engines:
 
 ---
 
-### PyThaiNLP Mode
+## PyThaiNLP Mode
 
-1. Install Python v3.13 or later (download from python.org).
-2. Install required packages (one-time setup):
+How to Run the Local Server
 
-   ```bash
-   pip install pythainlp pyspellchecker
-   ```
+English
 
-3. Save `spellcheck_server.py` to any directory on your system and launch the service via Terminal/PowerShell (keep the terminal window running during use):
+### 1. Copy the Server Folder Path
 
-   ```bash
-   python "C:\{your save path}\spellcheck_server.py"
-   ```
+Click "Copy Server Folder Path" to copy the local Server directory.
 
-   *Alternatively, click **Save spellcheck_server.py**, then click **Save Spellcheck Launcher** in the same folder. Double-click the launcher script to start the server automatically without opening a command prompt manually.*
+### 2. How to Run the Server
 
-4. When `spellcheck service on http://127.0.0.1:8765` appears, the server is ready.
-5. In the plugin panel, click **Test** next to the Service URL.
+#### 2.1 For Windows
 
-You can change the port using your own desired number by `spellcheck_server.py --port XXXX` and update the plugin URL to match.
+Press Windows + R and paste the path (Ctrl + V) to open the folder then Double-click `spellcheck_server.exe` to run the server.
+
+#### 2.2 For macOS
+
+Open Finder, press Cmd + Shift + G, and paste the path (Cmd + V) to open the folder then Double-click `start.command` to run the server.
+
+Or via Terminal:
+
+```bash
+cd [Copied Path]
+./spellcheck_server
+```
+
+### 3. Test the Connection
+
+When the terminal window shows the server is running, keep it open and click "Test".
+
+### 4. Stop the Server
+
+Close the Terminal window to stop the server when done.
+
+### Note
+
+Portable zero-install architecture. No Python installation required.
 
 ---
 
@@ -184,26 +201,42 @@ LM Studio, Ollama (Local) · OpenAI (ChatGPT) · Anthropic (Claude) · Google Ge
 ---
 
 ### โหมด PyThaiNLP
+# วิธีเปิดใช้งาน Local Server (Zero-Install)
 
-1. ติดตั้ง Python v3.13 ขึ้นไป (ดาวน์โหลดจาก python.org)
-2. ติดตั้งแพ็กเกจ (ครั้งเดียว)
+## ภาษาไทย
 
-   ```bash
-   pip install pythainlp pyspellchecker
-   ```
+### 1. คัดลอกตำแหน่งโฟลเดอร์เซิร์ฟเวอร์
 
-3. บันทึกไฟล์ `spellcheck_server.py` ไว้ในโฟลเดอร์ใดก็ได้ แล้วรันบริการด้วย Terminal/Powershell (เปิดหน้าต่างค้างไว้ระหว่างใช้งาน)
+กดปุ่ม "คัดลอก Path โฟลเดอร์เซิร์ฟเวอร์" เพื่อ Copy ตำแหน่ง Server ในเครื่องของคุณ
 
-   ```bash
-   python "C:\{your save path}\spellcheck_server.py"
-   ```
+### 2. วิธีเปิดใช้งานเซิร์ฟเวอร์
 
-   *หรือกด **บันทึก spellcheck_server.py** แล้วเลือกจุดที่ต้องการบันทึก จากนั้นกด **บันทึก Server Launcher** ไว้ที่เดียวกัน แล้วดับเบิลคลิกไฟล์ Server Launcher เพื่อรันแทนการพิมพ์คำสั่งเอง*
+#### 2.1 สำหรับ Windows
 
-4. เห็นข้อความ `spellcheck service on http://127.0.0.1:8765` แสดงว่าพร้อม
-5. ในแผง กด **ทดสอบ** ข้าง URL บริการ
+กดปุ่ม Windows + R แล้ววาง Path (Ctrl + V) เพื่อเปิดโฟลเดอร์ จากนั้นให้ดับเบิลคลิกไฟล์ `spellcheck_server.exe` เพื่อเปิดเซิร์ฟเวอร์
 
-เปลี่ยนพอร์ตให้เป็นเลขที่ต้องการได้ด้วย `spellcheck_server.py --port XXXX` แล้วแก้ URL ในแผงให้ตรงกัน
+#### 2.2 สำหรับ macOS
+
+เปิด Finder กดปุ่ม Cmd + Shift + G แล้ววาง Path (Cmd + V) เพื่อเปิดโฟลเดอร์ จากนั้นให้ดับเบิลคลิกไฟล์ `start.command` เพื่อเปิดเซิร์ฟเวอร์
+
+หรือรันผ่าน Terminal:
+
+```bash
+cd [Path ที่ Copy ไว้]
+./spellcheck_server
+```
+
+### 3. ทดสอบการเชื่อมต่อ
+
+เมื่อเห็นหน้าต่าง Terminal ขึ้นข้อความว่าเซิร์ฟเวอร์รันอยู่ ให้เปิดหน้าต่างนั้นค้างไว้ แล้วกดปุ่ม "ทดสอบ"
+
+### 4. ปิดการทำงานของเซิร์ฟเวอร์
+
+เมื่อต้องการหยุดใช้งาน ให้ปิดหน้าต่าง Terminal เพื่อปิดการทำงานของเซิร์ฟเวอร์
+
+### หมายเหตุ
+
+ระบบทำงานแบบพร้อมใช้ไม่ต้องติดตั้ง Python หรือตั้งค่าใดๆ เพิ่มเติม
 
 ---
 

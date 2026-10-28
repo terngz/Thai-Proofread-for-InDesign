@@ -1,2 +1,18 @@
-backup
-build
+# Exclude Built Binaries & Bundles
+/backup/
+/build/
+*.ccx
+/release/
+spellcheck_server.py
+spellcheck_server.spec
+
+# Exclude Dependencies & Caches
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+
+# Exclude Local IDE & UXP Settings
+.vscode/
+.idea/
