@@ -70,43 +70,34 @@ Choose between two proofreading engines:
 ---
 
 ## PyThaiNLP Mode
+### Portable zero-install architecture. No Python installation required.
 
-How to Run the Local Server
+#### How to Run the Local Server
 
-English
+#### English
 
-### 1. Copy the Server Folder Path
+1. Copy the Server Folder Path
 
-Click "Copy Server Folder Path" to copy the local Server directory.
+    Click "Copy Server Folder Path" to copy the local Server directory.
 
-### 2. How to Run the Server
+2. How to Run the Server
 
-#### 2.1 For Windows
+    2.1 For Windows: Press Windows + R and paste the path (Ctrl + V) to open the folder then Double-click `spellcheck_server.exe` to run the server.
+    
+    2.2 For macOS: Open Finder, press Cmd + Shift + G, and paste the path (Cmd + V) to open the folder then Double-click `start.command` to run the server.
 
-Press Windows + R and paste the path (Ctrl + V) to open the folder then Double-click `spellcheck_server.exe` to run the server.
+        or via Terminal:
 
-#### 2.2 For macOS
+            ```bash
+            cd [Copied Path]
+            ./spellcheck_server
+            ```
 
-Open Finder, press Cmd + Shift + G, and paste the path (Cmd + V) to open the folder then Double-click `start.command` to run the server.
+3. Test the Connection
+    When the terminal window shows the server is running, keep it open and click "Test".
 
-Or via Terminal:
-
-```bash
-cd [Copied Path]
-./spellcheck_server
-```
-
-### 3. Test the Connection
-
-When the terminal window shows the server is running, keep it open and click "Test".
-
-### 4. Stop the Server
-
-Close the Terminal window to stop the server when done.
-
-### Note
-
-Portable zero-install architecture. No Python installation required.
+4. Stop the Server
+    Close the Terminal window to stop the server when done.
 
 ---
 
@@ -201,22 +192,21 @@ LM Studio, Ollama (Local) · OpenAI (ChatGPT) · Anthropic (Claude) · Google Ge
 ---
 
 ### โหมด PyThaiNLP
-# วิธีเปิดใช้งาน Local Server (Zero-Install)
+ระบบทำงานแบบพร้อมใช้ไม่ต้องติดตั้ง Python หรือตั้งค่าใดๆ เพิ่มเติม
 
-## ภาษาไทย
 
-### 1. คัดลอกตำแหน่งโฟลเดอร์เซิร์ฟเวอร์
+#### วิธีเปิดใช้งาน Local Server (Zero-Install)
+
+#### 1. คัดลอกตำแหน่งโฟลเดอร์เซิร์ฟเวอร์
 
 กดปุ่ม "คัดลอก Path โฟลเดอร์เซิร์ฟเวอร์" เพื่อ Copy ตำแหน่ง Server ในเครื่องของคุณ
 
-### 2. วิธีเปิดใช้งานเซิร์ฟเวอร์
+#### 2. วิธีเปิดใช้งานเซิร์ฟเวอร์
 
-#### 2.1 สำหรับ Windows
+#### 2.1 สำหรับ Windows : 
+กดปุ่ม Windows + R แล้ววาง Path (Ctrl + V) เพื่อเปิดโฟลเดอร์ จากนั้นให้ดับเบิลคลิกไฟล์ `spellcheck_server.exe` เพื่อเปิดเซิร์ฟเวอร์    
 
-กดปุ่ม Windows + R แล้ววาง Path (Ctrl + V) เพื่อเปิดโฟลเดอร์ จากนั้นให้ดับเบิลคลิกไฟล์ `spellcheck_server.exe` เพื่อเปิดเซิร์ฟเวอร์
-
-#### 2.2 สำหรับ macOS
-
+#### 2.2 สำหรับ macOS : 
 เปิด Finder กดปุ่ม Cmd + Shift + G แล้ววาง Path (Cmd + V) เพื่อเปิดโฟลเดอร์ จากนั้นให้ดับเบิลคลิกไฟล์ `start.command` เพื่อเปิดเซิร์ฟเวอร์
 
 หรือรันผ่าน Terminal:
@@ -226,17 +216,13 @@ cd [Path ที่ Copy ไว้]
 ./spellcheck_server
 ```
 
-### 3. ทดสอบการเชื่อมต่อ
+#### 3. ทดสอบการเชื่อมต่อ
 
 เมื่อเห็นหน้าต่าง Terminal ขึ้นข้อความว่าเซิร์ฟเวอร์รันอยู่ ให้เปิดหน้าต่างนั้นค้างไว้ แล้วกดปุ่ม "ทดสอบ"
 
-### 4. ปิดการทำงานของเซิร์ฟเวอร์
+#### 4. ปิดการทำงานของเซิร์ฟเวอร์
 
 เมื่อต้องการหยุดใช้งาน ให้ปิดหน้าต่าง Terminal เพื่อปิดการทำงานของเซิร์ฟเวอร์
-
-### หมายเหตุ
-
-ระบบทำงานแบบพร้อมใช้ไม่ต้องติดตั้ง Python หรือตั้งค่าใดๆ เพิ่มเติม
 
 ---
 

@@ -7,7 +7,6 @@ spellcheck_server.py
 spellcheck_server.spec
 
 # Exclude Dependencies & Caches
-node_modules/
 __pycache__/
 *.pyc
 *.pyo

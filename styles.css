@@ -156,7 +156,7 @@ h3 {
 #status {
     box-sizing: border-box;
     border: 1px solid var(--bd);
-    border-radius: var(--r);
+    border-radius: 6px;
     background-color: var(--surface);
 }
 
@@ -251,7 +251,7 @@ h3 {
     margin: var(--s1) 0 var(--s2) 0;
     padding: 6px var(--s2);
     background-color: var(--bg);
-    border-radius: 5px;
+    border-radius: 6px;
     color: var(--ok);
     font-family: monospace;
     font-size: var(--fs-sm);
@@ -614,10 +614,12 @@ sp-button {
 #status {
     margin: 0 0 var(--s2) 0;
     padding: var(--s2) var(--s3);
-    border-left: 3px solid var(--bd);
+    /* border-left: 3px solid var(--bd);*/
+    border-radius: 6px;
     font-size: var(--fs-sm);
     line-height: 1.5;
     color: var(--fg);
+    text-align: center;
 }
 
 #status.err {
@@ -664,10 +666,16 @@ sp-button {
     margin: var(--s1) 0 0 0;
     font-size: var(--fs-xs);
     color: var(--fg2);
+    justify-content: center;
+    align-items: center;
+    text-align: center;
 }
 
 #statsLine {
     margin-bottom: var(--s2);
+    justify-content: center;
+    align-items: center;
+    text-align: center;
 }
 
 #connResult,

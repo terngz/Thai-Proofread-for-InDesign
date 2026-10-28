@@ -71,6 +71,7 @@
       </div>
     </div>
 
+    <!-- ==================== MAIN CHECKER (accEngine) ==================== -->
     <div class="acc" id="accEngine" data-open="1">
       <div class="acc-head"><span data-i18n="sec.engine"></span><span class="acc-ind">−</span></div>
 
@@ -154,8 +155,6 @@
             </div>
           </div>
         </div> 
-        
-        <!-- ปิด pythainlpConfigBox ตรงนี้ -->
 
         <!-- ==================== AI Config Box ==================== -->
         <div id="aiConfigBox" class="config-box" style="display: none;">
@@ -305,80 +304,84 @@
           </div>
 
         </div>
-        
-
-        <div class="acc" id="accRules" data-open="1">
-          <div class="acc-head"><span data-i18n="sec.rules"></span><span class="acc-ind">−</span></div>
-          <div class="acc-body">
-            <label class="chk">
-              <sp-checkbox type="checkbox" id="chkSpelling" checked></sp-checkbox>
-              <span data-i18n="rules.spelling"></span>
-            </label>
-            <label class="chk">
-              <sp-checkbox type="checkbox" id="chkRules" checked></sp-checkbox>
-              <span data-i18n="rules.auto"></span>
-            </label>
-            <label class="chk">
-              <sp-checkbox type="checkbox" id="chkSpacing"></sp-checkbox>
-              <span data-i18n="rules.spacing"></span>
-            </label>
-          </div>
-        </div>
-
-        <div class="acc" id="accScope" data-open="1">
-          <div class="acc-head"><span data-i18n="sec.scope"></span><span class="acc-ind">−</span></div>
-          <div class="acc-body">
-            <div class="field">
-              <sp-dropdown id="scopeSelect">
-                <sp-menu slot="options">
-                  <sp-menu-item value="selection" selected data-i18n="scope.sel"></sp-menu-item>
-                  <sp-menu-item value="page" data-i18n="scope.page"></sp-menu-item>
-                  <sp-menu-item value="document" data-i18n="scope.doc"></sp-menu-item>
-                </sp-menu>
-              </sp-dropdown>
-            </div>
-          </div>
-        </div>
-
-        <div id="actionBtnWrap">
-          <sp-button id="btnCheck" variant="cta" data-i18n="btn.check"></sp-button>
-          <sp-button id="btnCancel" variant="warning" style="display: none;" data-i18n="btn.stop"></sp-button>
-        </div>
-
-        <div id="progressWrap" style="display: none;">
-          <div id="progressTrack">
-            <div id="progressFill"></div>
-          </div>
-          <div id="progressText"></div>
-        </div>
-
-        <div id="status"></div>
-        <div id="disclaimerBox" class="disclaimer-box" style="display: none;" data-i18n="run.disclaimer"></div>
-        <div id="statsLine"></div>
-        <div id="resultList"></div>
-
-        <div class="acc" id="accLog" data-open="0">
-          <div class="acc-head"><span data-i18n="sec.log"></span><span class="acc-ind">+</span></div>
-          <div class="acc-body">
-            <sp-textarea id="logBox" readonly></sp-textarea>
-            <div class="btn-line"><sp-button variant="primary" id="btnClearLog" data-i18n="log.clear"></sp-button></div>
-          </div>
-        </div>
-
-        <div class="footer">
-          <span id="btnResetAll" class="link" data-i18n="foot.reset"></span>
-          <span id="btnClearIgnore" class="link"></span>
-        </div>
 
       </div>
+    </div> 
+    <!-- ปิด Main Checker (accEngine) ตรงนี้ -->
 
-      <script src="i18n.js"></script>
-      <script src="dropdown.js"></script>
-      <script src="words_th.js"></script>
-      <script src="words_en.js"></script>
-      <script src="providers.js"></script>
-      <script src="settings.js"></script>
-      <script src="index.js"></script>
+    <!-- ==================== COMMON CONTROLS (อยู่นอก Main Checker) ==================== -->
+    <div class="acc" id="accRules" data-open="1">
+      <div class="acc-head"><span data-i18n="sec.rules"></span><span class="acc-ind">−</span></div>
+      <div class="acc-body">
+        <label class="chk">
+          <sp-checkbox type="checkbox" id="chkSpelling" checked></sp-checkbox>
+          <span data-i18n="rules.spelling"></span>
+        </label>
+        <label class="chk">
+          <sp-checkbox type="checkbox" id="chkRules" checked></sp-checkbox>
+          <span data-i18n="rules.auto"></span>
+        </label>
+        <label class="chk">
+          <sp-checkbox type="checkbox" id="chkSpacing"></sp-checkbox>
+          <span data-i18n="rules.spacing"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="acc" id="accScope" data-open="1">
+      <div class="acc-head"><span data-i18n="sec.scope"></span><span class="acc-ind">−</span></div>
+      <div class="acc-body">
+        <div class="field">
+          <sp-dropdown id="scopeSelect">
+            <sp-menu slot="options">
+              <sp-menu-item value="selection" selected data-i18n="scope.sel"></sp-menu-item>
+              <sp-menu-item value="page" data-i18n="scope.page"></sp-menu-item>
+              <sp-menu-item value="document" data-i18n="scope.doc"></sp-menu-item>
+            </sp-menu>
+          </sp-dropdown>
+        </div>
+      </div>
+    </div>
+
+    <div id="actionBtnWrap">
+      <sp-button id="btnCheck" variant="cta" data-i18n="btn.check"></sp-button>
+      <sp-button id="btnCancel" variant="warning" style="display: none;" data-i18n="btn.stop"></sp-button>
+    </div>
+
+    <div id="progressWrap" style="display: none;">
+      <div id="progressTrack">
+        <div id="progressFill"></div>
+      </div>
+      <div id="progressText"></div>
+    </div>
+
+    <div id="status"></div>
+    <div id="disclaimerBox" class="disclaimer-box" style="display: none;" data-i18n="run.disclaimer"></div>
+    <div id="statsLine"></div>
+    <div id="resultList"></div>
+
+    <div class="acc" id="accLog" data-open="0">
+      <div class="acc-head"><span data-i18n="sec.log"></span><span class="acc-ind">+</span></div>
+      <div class="acc-body">
+        <sp-textarea id="logBox" readonly></sp-textarea>
+        <div class="btn-line"><sp-button variant="primary" id="btnClearLog" data-i18n="log.clear"></sp-button></div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span id="btnResetAll" class="link" data-i18n="foot.reset"></span>
+      <span id="btnClearIgnore" class="link"></span>
+    </div>
+
+  </div>
+
+  <script src="i18n.js"></script>
+  <script src="dropdown.js"></script>
+  <script src="words_th.js"></script>
+  <script src="words_en.js"></script>
+  <script src="providers.js"></script>
+  <script src="settings.js"></script>
+  <script src="index.js"></script>
 </body>
 
 </html>
